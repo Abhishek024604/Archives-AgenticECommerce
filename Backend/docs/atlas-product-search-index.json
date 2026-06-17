@@ -1,0 +1,38 @@
+{
+  "name": "product_search",
+  "definition": {
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "brandName": [
+          {
+            "type": "string",
+            "analyzer": "lucene.standard",
+            "searchAnalyzer": "lucene.standard"
+          },
+          {
+            "type": "autocomplete",
+            "tokenization": "edgeGram",
+            "minGrams": 2,
+            "maxGrams": 20,
+            "foldDiacritics": true
+          }
+        ],
+        "productName": [
+          {
+            "type": "string",
+            "analyzer": "lucene.standard",
+            "searchAnalyzer": "lucene.standard"
+          },
+          {
+            "type": "autocomplete",
+            "tokenization": "edgeGram",
+            "minGrams": 2,
+            "maxGrams": 25,
+            "foldDiacritics": true
+          }
+        ]
+      }
+    }
+  }
+}

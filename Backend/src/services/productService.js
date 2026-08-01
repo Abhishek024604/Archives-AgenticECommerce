@@ -20,6 +20,8 @@ const productPopulate = { path: "seller", select: "name email" };
 const productProjection = {
     brandName: 1,
     productName: 1,
+    category: 1,
+    subCategory: 1,
     price: 1,
     rating: 1,
     totalRatings: 1,
@@ -33,76 +35,6 @@ const productProjection = {
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const tokenize = (value) =>
-    normalizeSearchTerm(value)
-        .toLowerCase()
-        .split(" ")
-        .filter(Boolean);
-
-const getEditDistance = (left, right) => {
-    const rows = left.length + 1;
-    const columns = right.length + 1;
-    const distances = Array.from({ length: rows }, () => Array(columns).fill(0));
-
-    for (let row = 0; row < rows; row += 1) {
-        distances[row][0] = row;
-    }
-
-    for (let column = 0; column < columns; column += 1) {
-        distances[0][column] = column;
-    }
-
-    for (let row = 1; row < rows; row += 1) {
-        for (let column = 1; column < columns; column += 1) {
-            const substitutionCost = left[row - 1] === right[column - 1] ? 0 : 1;
-            distances[row][column] = Math.min(
-                distances[row - 1][column] + 1,
-                distances[row][column - 1] + 1,
-                distances[row - 1][column - 1] + substitutionCost
-            );
-        }
-    }
-
-    return distances[left.length][right.length];
-};
-
-const scoreFallbackProduct = (product, query) => {
-    const queryTokens = tokenize(query);
-    const searchable = `${product.brandName} ${product.productName}`.toLowerCase();
-    const productTokens = tokenize(searchable);
-
-    if (searchable.includes(query.toLowerCase())) {
-        return 100;
-    }
-
-    let score = 0;
-
-    for (const queryToken of queryTokens) {
-        let bestTokenScore = 0;
-
-        for (const productToken of productTokens) {
-            if (productToken.startsWith(queryToken) || queryToken.startsWith(productToken)) {
-                bestTokenScore = Math.max(bestTokenScore, 12);
-                continue;
-            }
-
-            const distance = getEditDistance(queryToken, productToken);
-            const sharedPrefixLength = [...queryToken].findIndex((char, index) => char !== productToken[index]);
-            const commonPrefixLength = sharedPrefixLength === -1
-                ? Math.min(queryToken.length, productToken.length)
-                : sharedPrefixLength;
-            const allowedEdits = queryToken.length <= 4 && commonPrefixLength < 2 ? 1 : 2;
-
-            if (distance <= allowedEdits) {
-                bestTokenScore = Math.max(bestTokenScore, 10 - distance * 2);
-            }
-        }
-
-        score += bestTokenScore;
-    }
-
-    return score;
-};
 
 const buildProductSearchPipeline = (query, limit) => [
     {
@@ -176,33 +108,29 @@ const buildProductSearchPipeline = (query, limit) => [
 
 const hydrateProductSellers = async (products) => Product.populate(products, productPopulate);
 
-const fallbackProductSearch = async (query, limit) => {
-    const pattern = new RegExp(escapeRegex(query), "i");
-    const minimumFallbackScore = tokenize(query).length > 1 ? tokenize(query).length * 8 : 8;
-    const products = await Product.find()
-        .populate(productPopulate);
+const fallbackProductSearch = async (query, limit, category, subCategory) => {
+    const filter = {};
+    if (query) {
+        const pattern = new RegExp(escapeRegex(query), "i");
+        filter.$or = [
+            { productName: pattern },
+            { brandName: pattern }
+        ];
+    }
+    if (category) {
+        filter.category = String(category).toLowerCase();
+    }
+    if (subCategory) {
+        const subCats = String(subCategory).toLowerCase().split(",").map(s => s.trim());
+        filter.subCategory = { $in: subCats };
+    }
 
-    return products
-        .map((product) => ({
-            product,
-            fallbackScore: pattern.test(product.productName) || pattern.test(product.brandName)
-                ? 100
-                : scoreFallbackProduct(product, query)
-        }))
-        .filter(({ fallbackScore }) => fallbackScore >= minimumFallbackScore)
-        .sort((left, right) => {
-            if (right.fallbackScore !== left.fallbackScore) {
-                return right.fallbackScore - left.fallbackScore;
-            }
+    const products = await Product.find(filter)
+    .sort({ rating: -1, totalRatings: -1, createdAt: -1 })
+    .limit(limit)
+    .populate(productPopulate);
 
-            if ((right.product.rating || 0) !== (left.product.rating || 0)) {
-                return (right.product.rating || 0) - (left.product.rating || 0);
-            }
-
-            return (right.product.totalRatings || 0) - (left.product.totalRatings || 0);
-        })
-        .slice(0, limit)
-        .map(({ product }) => product);
+    return products;
 };
 
 export const createProductService = async (data, user) => {
@@ -219,12 +147,63 @@ export const createProductService = async (data, user) => {
     });
 };
 
-export const getAllProductsService = async ({ q, limit = 80 } = {}) => {
+export const getAllProductsService = async ({ q, category, subCategory, limit = 1000, filter: listFilter } = {}) => {
     const query = normalizeSearchTerm(q);
-    const resultLimit = Math.min(Math.max(Number(limit) || 80, 1), 120);
+    const resultLimit = Math.min(Math.max(Number(limit) || 1000, 1), 5000);
+
+    const filterObj = {};
+    if (category) {
+        filterObj.category = String(category).toLowerCase();
+    }
+    if (subCategory) {
+        const subCats = String(subCategory).toLowerCase().split(",").map(s => s.trim());
+        filterObj.subCategory = { $in: subCats };
+    }
 
     if (!query) {
-        return await Product.find()
+        if (listFilter === "bestsellers") {
+            const bestSellers = await Product.aggregate([
+                { $match: { ...filterObj, "variants.stock": { $gt: 0 } } }, // Must be in stock
+                { $addFields: {
+                    bestsellerScore: {
+                        $add: [
+                            { $multiply: [{ $ifNull: ["$salesCount", 0] }, 0.6] }, // 60% weight to sales
+                            { $multiply: [ 
+                                { $divide: [{ $ifNull: ["$rating", 0] }, 5] }, 
+                                { $min: [{ $ifNull: ["$totalRatings", 0] }, 100] }, 
+                                0.3 
+                            ]}, // 30% weight to rating momentum
+                            { $multiply: [{ $ifNull: ["$discount", 0] }, 0.1] } // 10% weight to discount offering
+                        ]
+                    }
+                }},
+                { $sort: { bestsellerScore: -1, createdAt: -1 } },
+                { $limit: resultLimit }
+            ]);
+            
+            return await hydrateProductSellers(bestSellers);
+        }
+
+        if (listFilter === "new") {
+            const newArrivals = await Product.aggregate([
+                { $match: { ...filterObj, "variants.stock": { $gt: 0 } } }, // Must be in stock
+                { $addFields: {
+                    newnessScore: {
+                        $add: [
+                            { $toLong: "$createdAt" }, // Primary driver: timestamp
+                            { $multiply: [{ $ifNull: ["$rating", 0] }, 86400000] }, // Rating gives a time-equivalent boost (e.g. 1 rating point = 1 day boost)
+                            { $multiply: [{ $ifNull: ["$discount", 0] }, 3600000] } // Discount gives a smaller time-equivalent boost (e.g. 1% discount = 1 hour boost)
+                        ]
+                    }
+                }},
+                { $sort: { newnessScore: -1 } },
+                { $limit: resultLimit }
+            ]);
+            
+            return await hydrateProductSellers(newArrivals);
+        }
+        
+        return await Product.find(filterObj)
             .sort({ createdAt: -1 })
             .limit(resultLimit)
             .populate(productPopulate);
@@ -233,17 +212,26 @@ export const getAllProductsService = async ({ q, limit = 80 } = {}) => {
     try {
         const products = await Product.aggregate(buildProductSearchPipeline(query, resultLimit));
 
-        if (products.length === 0 && !ATLAS_SEARCH_STRICT) {
-            return fallbackProductSearch(query, resultLimit);
+        let filtered = products;
+        if (category) {
+            filtered = filtered.filter(p => String(p.category || "").toLowerCase() === String(category).toLowerCase());
+        }
+        if (subCategory) {
+            const subCats = String(subCategory).toLowerCase().split(",").map(s => s.trim());
+            filtered = filtered.filter(p => subCats.includes(String(p.subCategory || "").toLowerCase()));
         }
 
-        return await hydrateProductSellers(products);
+        if (filtered.length === 0 && !ATLAS_SEARCH_STRICT) {
+            return fallbackProductSearch(query, resultLimit, category, subCategory);
+        }
+
+        return await hydrateProductSellers(filtered);
     } catch (error) {
         if (ATLAS_SEARCH_STRICT) {
             throw error;
         }
 
-        return fallbackProductSearch(query, resultLimit);
+        return fallbackProductSearch(query, resultLimit, category, subCategory);
     }
 };
 
@@ -360,6 +348,8 @@ export const updateProductService = async (id, data, user) => {
     const allowedFields = [
         "brandName",
         "productName",
+        "category",
+        "subCategory",
         "price",
         "discount",
         "images",

@@ -69,7 +69,7 @@ export const getCommunities = async (req, res) => {
 
     try {
 
-        const communities = await communityService.getCommunities()
+        const communities = await communityService.getCommunities(req.query.search);
 
         res.status(200).json({
             success: true,
@@ -85,3 +85,17 @@ export const getCommunities = async (req, res) => {
     }
 }
 
+export const deleteCommunity = async (req, res) => {
+    try {
+        await communityService.deleteCommunity(req.params.id, req.userId);
+        res.status(200).json({
+            success: true,
+            message: "Community deleted successfully"
+        });
+    } catch (error) {
+        res.status(error.message === "Unauthorized to delete community" ? 403 : 500).json({
+            success: false,
+            message: error.message
+        });
+    }
+}

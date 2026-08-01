@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
+import HomeFooter from "../components/home/HomeFooter";
 
 const aboutImages = {
   hero:
@@ -41,18 +42,21 @@ const values = [
 
 export default function About() {
   return (
-    <main className="min-h-screen bg-surface text-on-background">
-      <AboutHero />
-      <Story />
-      <Values />
-      <Craft />
-    </main>
+    <div className="min-h-screen bg-white text-stone-900 flex flex-col justify-between">
+      <main>
+        <AboutHero />
+        <Story />
+        <Values />
+        <Craft />
+      </main>
+      <HomeFooter />
+    </div>
   );
 }
 
 function AboutHero() {
   return (
-    <section className="relative min-h-[720px] overflow-hidden bg-inverse-surface text-white">
+    <section className="relative min-h-[720px] overflow-hidden bg-stone-950 text-white">
       <img
         src={aboutImages.hero}
         alt="Archivist editorial portrait in tailoring"
@@ -127,10 +131,10 @@ function Story() {
   return (
     <section className="grid gap-14 px-6 py-20 md:grid-cols-[0.08fr_0.38fr_0.54fr] md:px-12 lg:px-24">
       <div className="hidden items-start gap-8 md:flex">
-        <span className="writing-mode-vertical text-[10px] font-bold uppercase tracking-[0.28em] text-on-surface-variant [writing-mode:vertical-rl]">
+        <span className="writing-mode-vertical text-[10px] font-bold uppercase tracking-[0.28em] text-stone-500 [writing-mode:vertical-rl]">
           Our Story
         </span>
-        <span className="mt-28 h-24 w-px bg-outline-variant" />
+        <span className="mt-28 h-24 w-px bg-stone-300" />
       </div>
 
       <div className="self-center">
@@ -139,7 +143,7 @@ function Story() {
           <br />
           Rooted in timelessness.
         </h2>
-        <div className="mt-9 max-w-sm space-y-6 text-sm leading-7 text-on-surface">
+        <div className="mt-9 max-w-sm space-y-6 text-sm leading-7 text-stone-700">
           <p>
             We created ARCHIVIST for those who seek more meaning, more
             intentionality, and more longevity in the things they choose to be a
@@ -153,7 +157,7 @@ function Story() {
         </div>
         <Link
           to="/archives"
-          className="mt-10 inline-flex h-14 items-center gap-12 border border-outline px-7 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-inverse-surface hover:text-white"
+          className="mt-10 inline-flex h-14 items-center gap-12 border border-stone-300 px-7 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-stone-950 hover:text-white"
         >
           Our Journey
           <span className="material-symbols-outlined text-lg">east</span>
@@ -166,9 +170,9 @@ function Story() {
           alt="Ceramic vessel and books in quiet light"
           className="aspect-[4/5] w-[72%] object-cover grayscale"
         />
-        <div className="absolute right-0 top-1/2 w-[56%] -translate-y-1/2 border border-outline-variant bg-tertiary-container p-8 shadow-[0_24px_60px_rgba(24,23,20,0.12)] md:p-12">
+        <div className="absolute right-0 top-1/2 w-[56%] -translate-y-1/2 border border-stone-200 bg-stone-50 p-8 shadow-[0_24px_60px_rgba(24,23,20,0.12)] md:p-12">
           <p className="font-headline text-5xl leading-none">"</p>
-          <p className="font-headline text-2xl italic leading-tight text-on-background">
+          <p className="font-headline text-2xl italic leading-tight text-stone-900">
             We do not chase trends. We collect timeless essentials that outlive
             them.
           </p>
@@ -183,7 +187,7 @@ function Story() {
 
 function Values() {
   return (
-    <section className="bg-inverse-surface px-6 py-16 text-white md:px-12 lg:px-24">
+    <section className="bg-stone-950 px-6 py-16 text-white md:px-12 lg:px-24">
       <p className="mb-12 text-[10px] font-bold uppercase tracking-[0.34em] text-white/78">
         Our Values
       </p>
@@ -214,8 +218,8 @@ function Craft() {
     <section className="grid gap-14 px-6 py-20 md:grid-cols-2 md:px-12 lg:px-24">
       <div className="self-center">
         <div className="mb-7 flex items-center gap-6">
-          <span className="h-px w-16 bg-outline-variant" />
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-on-surface-variant">
+          <span className="h-px w-16 bg-stone-300" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-stone-500">
             Our Craft
           </p>
         </div>
@@ -224,7 +228,7 @@ function Craft() {
           <br />
           Beautifully made.
         </h2>
-        <div className="mt-9 max-w-sm space-y-6 text-sm leading-7 text-on-surface">
+        <div className="mt-9 max-w-sm space-y-6 text-sm leading-7 text-stone-700">
           <p>
             We partner with artisans and makers who share our passion for
             quality, detail and integrity.
@@ -236,7 +240,7 @@ function Craft() {
         </div>
         <Link
           to="/products"
-          className="mt-10 inline-flex h-14 items-center gap-12 border border-outline px-7 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-inverse-surface hover:text-white"
+          className="mt-10 inline-flex h-14 items-center gap-12 border border-stone-300 px-7 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-stone-950 hover:text-white"
         >
           Learn More
           <span className="material-symbols-outlined text-lg">east</span>
@@ -261,3 +265,4 @@ function Craft() {
     </section>
   );
 }
+

@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 
 const initialForm = {
   title: "",
   subtitle: "",
   excerpt: "",
   category: "Editorial",
+  theme: "Design & Craft",
   coverImageData: "",
   tags: "",
   content: "",
@@ -110,14 +111,14 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
   };
 
   return (
-    <section className="mb-16 bg-surface-container-lowest shadow-[0_24px_48px_rgba(47,52,48,0.08)]">
+    <section className="mb-16 bg-white shadow-[0_24px_48px_rgba(47,52,48,0.08)]">
       <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="bg-surface-container-low p-6 md:p-8">
+        <aside className="bg-stone-50 p-6 md:p-8">
           <div className="mb-10">
-            <h2 className="font-headline text-xl font-bold uppercase tracking-[0.08em] text-on-background">
+            <h2 className="font-headline text-xl font-bold uppercase tracking-[0.08em] text-stone-950">
               The Archivist
             </h2>
-            <p className="mt-1 font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
+            <p className="mt-1 font-label text-[10px] uppercase tracking-[0.18em] text-stone-500">
               Editor Mode
             </p>
           </div>
@@ -125,32 +126,32 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
           <div className="space-y-5">
             <button
               type="button"
-              className="flex items-center gap-3 font-label text-[10px] font-bold uppercase tracking-[0.16em] text-on-background"
+              className="flex items-center gap-3 font-label text-[10px] font-bold uppercase tracking-[0.16em] text-stone-950"
             >
               <span className="material-symbols-outlined text-base">edit_note</span>
               Draft
             </button>
             <button
               type="button"
-              className="flex items-center gap-3 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant"
+              className="flex items-center gap-3 font-label text-[10px] uppercase tracking-[0.16em] text-stone-500"
             >
               <span className="material-symbols-outlined text-base">image</span>
               Assets
             </button>
           </div>
 
-          <div className="mt-14 space-y-5 font-label text-[10px] uppercase tracking-[0.14em] text-on-surface-variant">
+          <div className="mt-14 space-y-5 font-label text-[10px] uppercase tracking-[0.14em] text-stone-500">
             <div>
               <p>Status</p>
-              <p className="mt-1 font-bold text-on-background">Unsaved</p>
+              <p className="mt-1 font-bold text-stone-950">Unsaved</p>
             </div>
             <div>
               <p>Word Count</p>
-              <p className="mt-1 font-bold text-on-background">{wordCount} Words</p>
+              <p className="mt-1 font-bold text-stone-950">{wordCount} Words</p>
             </div>
             <div>
               <p>Read Time</p>
-              <p className="mt-1 font-bold text-on-background">{readTime} Minutes</p>
+              <p className="mt-1 font-bold text-stone-950">{readTime} Minutes</p>
             </div>
           </div>
         </aside>
@@ -160,14 +161,14 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
             <button
               type="button"
               onClick={onCancel}
-              className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-background"
+              className="font-label text-[10px] uppercase tracking-[0.2em] text-stone-500 transition-colors hover:text-stone-950"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="bg-primary px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="bg-stone-950 px-8 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Publishing..." : "Publish"}
             </button>
@@ -179,30 +180,44 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
             onChange={updateField}
             placeholder="Blog Title"
             rows="1"
-            className="mb-8 w-full resize-none overflow-hidden bg-transparent font-headline text-5xl font-bold leading-none tracking-tight text-on-background outline-none placeholder:text-outline-variant/50 md:text-7xl"
+            className="mb-8 w-full resize-none overflow-hidden bg-transparent font-headline text-5xl font-bold leading-none tracking-tight text-stone-950 outline-none placeholder:text-stone-400/50 md:text-7xl"
           />
 
-          <div className="mb-8 grid gap-5 md:grid-cols-2">
+          <div className="mb-8 grid gap-5 md:grid-cols-3">
             <input
               name="subtitle"
               value={form.subtitle}
               onChange={updateField}
               placeholder="Subtitle"
-              className="w-full bg-surface-container-low p-4 text-sm outline-none border-b border-outline focus:border-primary"
+              className="w-full bg-stone-50 p-4 text-sm outline-none border-b border-stone-300 focus:border-stone-900"
             />
             <input
               name="category"
               value={form.category}
               onChange={updateField}
               placeholder="Category"
-              className="w-full bg-surface-container-low p-4 text-sm outline-none border-b border-outline focus:border-primary"
+              className="w-full bg-stone-50 p-4 text-sm outline-none border-b border-stone-300 focus:border-stone-900"
             />
+            <select
+              name="theme"
+              value={form.theme}
+              onChange={updateField}
+              className="w-full bg-stone-50 p-4 text-sm outline-none border-b border-stone-300 focus:border-stone-900"
+            >
+              <option value="Sustainability">Theme: Sustainability</option>
+              <option value="Design & Craft">Theme: Design & Craft</option>
+              <option value="Watches">Theme: Watches</option>
+              <option value="Fragrance">Theme: Fragrance</option>
+              <option value="Horology & Tailoring">Theme: Horology & Tailoring</option>
+              <option value="Culture & Heritage">Theme: Culture & Heritage</option>
+              <option value="Quiet Luxury">Theme: Quiet Luxury</option>
+            </select>
           </div>
 
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="group mb-8 flex aspect-[21/9] w-full flex-col items-center justify-center overflow-hidden bg-surface-container-low transition-colors hover:bg-surface-container"
+            className="group mb-8 flex aspect-[21/9] w-full flex-col items-center justify-center overflow-hidden bg-stone-50 transition-colors hover:bg-stone-200"
           >
             {imagePreview ? (
               <img
@@ -212,10 +227,10 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
               />
             ) : (
               <>
-                <span className="material-symbols-outlined text-4xl text-outline-variant transition-colors group-hover:text-primary">
+                <span className="material-symbols-outlined text-4xl text-stone-400 transition-colors group-hover:text-primary">
                   add
                 </span>
-                <span className="mt-4 font-label text-[10px] uppercase tracking-[0.2em] text-outline-variant transition-colors group-hover:text-primary">
+                <span className="mt-4 font-label text-[10px] uppercase tracking-[0.2em] text-stone-400 transition-colors group-hover:text-primary">
                   Add Cover Image
                 </span>
               </>
@@ -229,14 +244,14 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
             className="hidden"
           />
 
-          <div className="mb-5 flex flex-wrap gap-2 bg-surface-container-low p-2">
+          <div className="mb-5 flex flex-wrap gap-2 bg-stone-50 p-2">
             {commands.map((item) => (
               <button
                 key={`${item.command}-${item.label}`}
                 type="button"
                 title={item.title}
                 onClick={() => runCommand(item.command, item.value)}
-                className="min-w-10 px-3 py-2 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant transition-colors hover:bg-surface-container-lowest hover:text-on-background"
+                className="min-w-10 px-3 py-2 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500 transition-colors hover:bg-white hover:text-stone-950"
               >
                 {item.label}
               </button>
@@ -245,7 +260,7 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
               type="button"
               title="Remove formatting"
               onClick={() => runCommand("removeFormat")}
-              className="ml-auto px-3 py-2 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant transition-colors hover:bg-surface-container-lowest hover:text-on-background"
+              className="ml-auto px-3 py-2 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-stone-500 transition-colors hover:bg-white hover:text-stone-950"
             >
               Clear
             </button>
@@ -256,7 +271,7 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
             contentEditable
             suppressContentEditableWarning
             onInput={handleEditorInput}
-            className="blog-editor min-h-[460px] w-full bg-transparent text-lg leading-8 text-on-surface outline-none empty:before:text-outline-variant empty:before:content-[attr(data-placeholder)] md:text-xl"
+            className="blog-editor min-h-[460px] w-full bg-transparent text-lg leading-8 text-stone-900 outline-none empty:before:text-stone-400 empty:before:content-[attr(data-placeholder)] md:text-xl"
             data-placeholder="Write your story..."
           />
 
@@ -267,22 +282,23 @@ export default function BlogEditor({ onSubmit, onCancel, saving, error }) {
               onChange={updateField}
               placeholder="Short excerpt"
               rows="4"
-              className="w-full resize-none bg-surface-container-low p-4 text-sm outline-none border-b border-outline focus:border-primary"
+              className="w-full resize-none bg-stone-50 p-4 text-sm outline-none border-b border-stone-300 focus:border-stone-900"
             />
             <input
               name="tags"
               value={form.tags}
               onChange={updateField}
               placeholder="Tags, comma separated"
-              className="h-fit w-full bg-surface-container-low p-4 text-sm outline-none border-b border-outline focus:border-primary"
+              className="h-fit w-full bg-stone-50 p-4 text-sm outline-none border-b border-stone-300 focus:border-stone-900"
             />
           </div>
 
           {localError || error ? (
-            <p className="mt-6 text-sm text-error">{localError || error}</p>
+            <p className="mt-6 text-sm text-red-600">{localError || error}</p>
           ) : null}
         </div>
       </form>
     </section>
   );
 }
+

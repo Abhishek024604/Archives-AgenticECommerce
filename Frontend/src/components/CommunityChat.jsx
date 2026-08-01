@@ -2,6 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import socket from "../socket/socket";
 import { getMessages } from "../api/message";
 
+const formatDateLabel = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return "Today";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
+  } else {
+    return new Intl.DateTimeFormat("en", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }).format(date);
+  }
+};
+
 export default function CommunityChat({
   communityId,
   Name,
@@ -9,6 +29,9 @@ export default function CommunityChat({
   memberCount,
   onJoin,
   onLeave,
+  onDelete,
+  isAdmin,
+  isMember,
 }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -105,96 +128,140 @@ export default function CommunityChat({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface">
-      <div className="shrink-0 border-b border-outline-variant/20 bg-surface px-8 py-7">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+    <div className="flex h-full min-h-0 flex-col bg-white text-stone-900 font-sans">
+      {/* Light Theme Header */}
+      <div className="shrink-0 border-b border-stone-200 bg-[#FAFAFA] px-6 py-6 sm:px-8 sm:py-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="font-label text-[10px] uppercase tracking-[0.3em] font-bold text-on-surface-variant">
-              {Name}
-            </p>
-            <h3 className="mt-3 font-headline text-3xl tracking-tight text-on-background md:text-4xl">
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-stone-500">
+              {Name || "Circle"}
+            </span>
+            <h3 className="font-headline text-2xl sm:text-3xl font-normal text-stone-950 mt-1">
               Community Room
             </h3>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-on-surface-variant">
-              {description}
+            <p className="mt-1.5 max-w-xl text-xs sm:text-sm text-stone-600 font-light leading-relaxed">
+              {description || "Welcome to the circle discussion."}
             </p>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-3 md:justify-end">
-            <p className="mr-1 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
               {memberCount} members
-            </p>
-            <button
-              onClick={onJoin}
-              className="bg-primary px-6 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary transition-opacity hover:opacity-90"
-            >
-              Join
-            </button>
-            <button
-              onClick={onLeave}
-              className="border border-outline px-6 py-3 font-label text-[10px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-surface-container-low"
-            >
-              Leave
-            </button>
+            </span>
+
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="bg-red-600 text-white px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-red-700 rounded-none"
+              >
+                Delete Community
+              </button>
+            ) : isMember ? (
+              <button
+                type="button"
+                onClick={onLeave}
+                className="border border-stone-300 bg-white text-stone-800 px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-stone-100 rounded-none"
+              >
+                Leave
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onJoin}
+                className="bg-stone-950 text-white px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-black rounded-none"
+              >
+                Join
+              </button>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Light Theme Messages Area */}
       <div
         ref={messagesContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto bg-[linear-gradient(180deg,#12110f_0%,#1b1a17_100%)] px-6 py-6 md:px-8"
+        className="min-h-0 flex-1 overflow-y-auto bg-[#F9F9F8] px-6 py-6 sm:px-8 space-y-4"
       >
         {messages.length === 0 ? (
-          <div className="flex h-full min-h-[280px] items-center justify-center text-sm text-on-surface-variant">
-            No messages yet. Start the conversation.
+          <div className="flex h-full min-h-[260px] flex-col items-center justify-center text-center text-stone-400">
+            <span className="material-symbols-outlined text-4xl mb-2 text-stone-300">
+              chat_bubble_outline
+            </span>
+            <p className="text-xs font-medium">No messages yet.</p>
+            <p className="text-[11px] text-stone-400 mt-0.5">Start the conversation in this circle!</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {messages.map((message) => (
-              <div
-                key={message._id || `${message.senderId?._id}-${message.createdAt}`}
-                className="grid grid-cols-[44px_minmax(0,1fr)] gap-4 border border-outline-variant/20 bg-surface-container-lowest px-4 py-3 shadow-[0_10px_28px_rgba(47,52,48,0.035)]"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-low font-headline text-base text-on-surface-variant">
-                  {(message.senderId?.name || "U").slice(0, 1)}
-                </div>
-                <div className="min-w-0">
-                  <p className="mb-1 font-label text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                    {message.senderId?.name || "Unknown"}
-                  </p>
-                  <p className="break-words text-sm leading-relaxed text-on-surface">
-                    {message.content?.text ||
-                      (message.content?.image ? "[image]" : "")}
-                  </p>
+          messages.map((message, index) => {
+            const currentMessageDate = message.createdAt ? formatDateLabel(message.createdAt) : "";
+            const previousMessage = index > 0 ? messages[index - 1] : null;
+            const previousMessageDate = previousMessage?.createdAt ? formatDateLabel(previousMessage.createdAt) : "";
+            
+            const showDateHeader = currentMessageDate && currentMessageDate !== previousMessageDate;
+
+            return (
+              <div key={message._id || `${message.senderId?._id}-${message.createdAt}`} className="flex flex-col gap-4">
+                {showDateHeader && (
+                  <div className="flex justify-center my-2">
+                    <span className="bg-stone-200/60 text-stone-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-none">
+                      {currentMessageDate}
+                    </span>
+                  </div>
+                )}
+                <div
+                  className="flex items-start gap-3.5 border border-stone-200 bg-white p-4 rounded-none shadow-2xs"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-stone-900 text-white font-headline text-sm font-bold">
+                    {(message.senderId?.name || "U").slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-bold text-stone-950">
+                        {message.senderId?.name || "Member"}
+                      </span>
+                      <span className="text-[10px] text-stone-400">
+                        {message.createdAt
+                          ? new Intl.DateTimeFormat("en", {
+                              hour: "numeric",
+                              minute: "numeric",
+                            }).format(new Date(message.createdAt))
+                          : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-stone-700 leading-relaxed break-words font-light">
+                      {message.content?.text ||
+                        (message.content?.image ? "[image]" : "")}
+                    </p>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
 
-      <div className="shrink-0 border-t border-outline-variant/20 bg-surface px-6 py-5 md:px-8">
+      {/* Light Theme Message Input Bar */}
+      <div className="shrink-0 border-t border-stone-200 bg-white px-6 py-4 sm:px-8">
         {chatError ? (
-          <div className="mb-4 border border-error/20 bg-error/5 px-4 py-3 text-sm text-error">
+          <div className="mb-3 border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700 rounded-none">
             {chatError}
           </div>
         ) : null}
-        <div className="flex flex-col gap-3 md:flex-row">
+        <div className="flex items-center gap-3">
           <input
             type="text"
             value={text}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && sendMessage()}
-            className="min-h-12 flex-1 border border-outline-variant/25 bg-surface-container-low px-4 text-sm transition-colors placeholder:text-outline focus:border-primary focus:outline-none focus:ring-0"
+            className="flex-1 border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-900 outline-none focus:border-stone-900 rounded-none"
             placeholder="Write your message..."
           />
           <button
+            type="button"
             onClick={sendMessage}
-            className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-7 font-label text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-2 bg-stone-950 text-white px-6 py-3 text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors rounded-none shrink-0"
           >
             <span>Send</span>
-            <span className="material-symbols-outlined text-base">
-              arrow_forward
-            </span>
+            <span className="material-symbols-outlined text-base">arrow_forward</span>
           </button>
         </div>
       </div>

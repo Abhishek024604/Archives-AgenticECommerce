@@ -1,29 +1,63 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { fetchProducts, fetchProductSuggestions } from "../api/productApi";
+import { fetchProducts } from "../api/productApi";
+import { API } from "../api/axios";
+import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../context/WishlistContext";
+import { useNavigate } from "react-router-dom";
 import { formatPrice } from "../utils/currency";
+import { resolveMediaUrl } from "../utils/media";
+import AnnouncementBar from "../components/home/AnnouncementBar";
+import HomeNavbar from "../components/home/HomeNavbar";
+import LucasStylistBanner from "../components/home/LucasStylistBanner";
+import ValueBadges from "../components/home/ValueBadges";
+import HomeFooter from "../components/home/HomeFooter";
+import { SUBCATEGORIES } from "../utils/categories";
+
+const FILTER_CATEGORIES = [
+  { label: "Women", id: "women" },
+  { label: "Men", id: "men" },
+  { label: "Footwear", id: "footwear" },
+  { label: "Bags", id: "bags" },
+  { label: "Perfumes", id: "perfumes" },
+  { label: "Accessories", id: "accessories" },
+  { label: "Home & Lifestyle", id: "home & lifestyle" },
+];
 
 export default function Products() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
+  const initialCategory = searchParams.get("category") || "";
+  const initialSubCategories = searchParams.get("subCategory") ? searchParams.get("subCategory").split(",") : [];
   const initialMinPrice = searchParams.get("minPrice") || "";
   const initialMaxPrice = searchParams.get("maxPrice") || "";
+
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
+  const [category, setCategory] = useState(initialCategory);
+  const [subCategories, setSubCategories] = useState(initialSubCategories);
   const [minPrice, setMinPrice] = useState(initialMinPrice);
   const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
+  const [showFilters, setShowFilters] = useState(true);
+  const [isSubcategoriesOpen, setIsSubcategoriesOpen] = useState(true);
+
+  const { wishlist, toggleWishlist } = useWishlist();
+
   const [loading, setLoading] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [error, setError] = useState("");
-  const searchRef = useRef(null);
 
   useEffect(() => {
     const nextQuery = searchParams.get("q") || "";
+    const nextCategory = searchParams.get("category") || "";
+    const nextSubCategory = searchParams.get("subCategory") || "";
     setQuery(nextQuery);
     setDebouncedQuery(nextQuery);
+    setCategory(nextCategory);
+    setSubCategories(nextSubCategory ? nextSubCategory.split(",") : []);
     setMinPrice(searchParams.get("minPrice") || "");
     setMaxPrice(searchParams.get("maxPrice") || "");
   }, [searchParams]);
@@ -36,37 +70,19 @@ export default function Products() {
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  // handleClickOutside removed
 
   useEffect(() => {
     const params = {};
 
-    if (debouncedQuery) {
-      params.q = debouncedQuery;
-    }
-
-    if (minPrice) {
-      params.minPrice = minPrice;
-    }
-
-    if (maxPrice) {
-      params.maxPrice = maxPrice;
-    }
+    if (debouncedQuery) params.q = debouncedQuery;
+    if (category) params.category = category;
+    if (subCategories.length > 0) params.subCategory = subCategories.join(",");
+    if (minPrice) params.minPrice = minPrice;
+    if (maxPrice) params.maxPrice = maxPrice;
 
     setSearchParams(params, { replace: true });
-  }, [debouncedQuery, maxPrice, minPrice, setSearchParams]);
+  }, [debouncedQuery, category, subCategories, maxPrice, minPrice, setSearchParams]);
 
   useEffect(() => {
     let active = true;
@@ -74,15 +90,19 @@ export default function Products() {
     (async () => {
       try {
         setLoading(true);
-        setError("");
-        const res = await fetchProducts(debouncedQuery ? { q: debouncedQuery } : undefined);
+        const apiParams = {};
+        if (debouncedQuery) apiParams.q = debouncedQuery;
+        if (category) apiParams.category = category;
+        if (subCategories.length > 0) apiParams.subCategory = subCategories.join(",");
+
+        const res = await fetchProducts(Object.keys(apiParams).length ? apiParams : undefined);
 
         if (active) {
           setItems(res.data || []);
         }
-      } catch (e) {
+      } catch {
         if (active) {
-          setError(e?.response?.data?.message || "Failed to load products");
+          // ignore error
         }
       } finally {
         if (active) {
@@ -95,348 +115,426 @@ export default function Products() {
     return () => {
       active = false;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, category, subCategories, user]);
 
-  useEffect(() => {
-    let active = true;
+  /* useEffect for suggestions removed since suggestions aren't used here */
 
-    if (query.trim().length < 2) {
-      setSuggestions([]);
-      return undefined;
+  const handleWishlistToggle = async (id) => {
+    if (!user) {
+      navigate("/login");
+      return;
     }
-
-    (async () => {
-      try {
-        const res = await fetchProductSuggestions({ q: query.trim(), limit: 6 });
-
-        if (active) {
-          setSuggestions(res.data || []);
-        }
-      } catch {
-        if (active) {
-          setSuggestions([]);
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [query]);
-
-  const submitSearch = (event) => {
-    event.preventDefault();
-    const nextQuery = query.trim();
-    setDebouncedQuery(nextQuery);
-    setShowSuggestions(false);
+    await toggleWishlist(id);
   };
 
-  const selectSuggestion = (suggestion) => {
-    const nextQuery = suggestion.productName;
-    setQuery(nextQuery);
-    setDebouncedQuery(nextQuery);
+  const clearAllFilters = () => {
     setMinPrice("");
     setMaxPrice("");
-    setShowSuggestions(false);
-  };
-
-  const clearSearch = () => {
+    setCategory("");
+    setSubCategories([]);
     setQuery("");
     setDebouncedQuery("");
-    setSuggestions([]);
-    setShowSuggestions(false);
   };
 
-  const highestPrice = useMemo(() => {
-    const highestItemPrice = items.reduce(
-      (highest, item) => Math.max(highest, Number(item.price) || 0),
-      0,
-    );
-
-    return Math.max(500, Math.ceil(highestItemPrice / 500) * 500);
-  }, [items]);
-
-  const priceOptions = useMemo(
-    () =>
-      Array.from(
-        { length: highestPrice / 500 + 1 },
-        (_, index) => index * 500,
-      ),
-    [highestPrice],
-  );
-
-  const filteredItems = useMemo(() => {
+  const sortedAndFilteredItems = useMemo(() => {
     const minimum = minPrice === "" ? 0 : Number(minPrice);
-    const maximum =
-      maxPrice === "" ? Number.POSITIVE_INFINITY : Number(maxPrice);
+    const maximum = maxPrice === "" ? Number.POSITIVE_INFINITY : Number(maxPrice);
 
-    return items.filter((item) => {
+    let list = items.filter((item) => {
       const price = Number(item.price) || 0;
-      return price >= minimum && price <= maximum;
+      const matchesCategory =
+        !category || String(item.category || "").toLowerCase() === category.toLowerCase();
+      const matchesSubCategory =
+        subCategories.length === 0 || subCategories.includes(String(item.subCategory || "").toLowerCase());
+      return price >= minimum && price <= maximum && matchesCategory && matchesSubCategory;
     });
-  }, [items, maxPrice, minPrice]);
 
-  const clearPriceFilter = () => {
-    setMinPrice("");
-    setMaxPrice("");
-  };
+    if (sortBy === "price-asc") {
+      list = list.sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (sortBy === "price-desc") {
+      list = list.sort((a, b) => (b.price || 0) - (a.price || 0));
+    } else if (sortBy === "rating") {
+      list = list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
 
-  if (loading && !hasLoaded) {
-    return (
-      <main className="bg-surface px-6 py-16 md:px-12">
-        <div className="mx-auto max-w-[1440px] text-on-surface-variant">
-          Loading products...
-        </div>
-      </main>
-    );
-  }
+    return list;
+  }, [items, category, subCategories, maxPrice, minPrice, sortBy]);
 
-  if (error && !hasLoaded) {
-    return (
-      <main className="bg-surface px-6 py-16 md:px-12">
-        <div className="mx-auto max-w-[1440px] text-error">{error}</div>
-      </main>
-    );
-  }
+  // min/max placeholder calculation removed since it is no longer used
 
   return (
-    <main className="bg-surface px-6 pb-24 pt-12 md:px-12 md:pt-16">
-      <header className="mx-auto mb-12 flex max-w-[1440px] flex-col gap-6 border-b border-outline-variant/15 pb-8 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="font-label text-[10px] font-bold uppercase tracking-[0.28em] text-on-surface-variant">
-            Shop
-          </p>
-          <h1 className="mt-3 font-headline text-4xl leading-tight tracking-tight text-on-background md:text-6xl">
-            The Archive
-          </h1>
-        </div>
-        <p className="max-w-sm text-sm leading-6 text-on-surface-variant">
-          Curated pieces with a restrained palette, archival proportions, and
-          everyday utility.
-        </p>
-      </header>
+    <div className="min-h-screen bg-white text-stone-900 font-sans selection:bg-stone-900 selection:text-white">
+      {/* 1. Announcement Bar */}
+      <AnnouncementBar />
 
-      <section ref={searchRef} className="mx-auto mb-10 max-w-[1440px]">
-        <form onSubmit={submitSearch} className="relative max-w-3xl">
-          <label htmlFor="product-search" className="sr-only">
-            Search products
-          </label>
-          <div className="flex min-h-14 items-center border border-outline-variant/30 bg-surface-container-lowest px-4 transition-colors focus-within:border-primary">
-            <span className="material-symbols-outlined mr-3 text-xl text-on-surface-variant">
-              search
-            </span>
-            <input
-              id="product-search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              className="h-14 flex-1 bg-transparent text-sm text-on-background outline-none placeholder:text-on-surface-variant"
-              placeholder="Search for shirts, boots, watches, brands"
-              type="text"
-              autoComplete="off"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Clear search"
-                className="mr-3 inline-flex h-9 w-9 items-center justify-center text-on-surface-variant transition-colors hover:text-on-background"
-              >
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
-            ) : null}
+      {/* 2. Main Navbar with Communities link */}
+      <HomeNavbar />
+
+      <div className="mx-auto max-w-[1536px] px-4 sm:px-6 lg:px-8 py-6">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex items-center gap-2 text-[11px] font-medium text-stone-500 uppercase tracking-wider mb-4">
+          <Link to="/" className="flex items-center gap-1 hover:text-stone-900 transition-colors">
+            <span className="material-symbols-outlined text-sm">home</span>
+            <span>Home</span>
+          </Link>
+          <span>›</span>
+          <Link to="/products" onClick={() => setCategory("")} className={`hover:text-stone-900 transition-colors ${!category ? 'text-stone-900 font-semibold' : ''}`}>
+            All Products
+          </Link>
+          {category && (
+            <>
+              <span>›</span>
+              <span className="text-stone-900 font-semibold">{category}</span>
+            </>
+          )}
+        </nav>
+
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-stone-200 pb-8 mb-6 gap-4">
+          <div>
+            <h1 className="font-headline text-4xl sm:text-5xl lg:text-6xl font-normal leading-none text-stone-950">
+              The Archive
+            </h1>
+          </div>
+          <p className="max-w-md text-xs sm:text-sm text-stone-500 font-light leading-relaxed">
+            Discover timeless pieces and modern icons. Curated for those who value style that lasts beyond seasons.
+          </p>
+        </div>
+
+        {/* Filter & Controls Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-4 mb-8">
+          
+          {/* Left Controls (Hide Filters & Filter Dropdowns) */}
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              type="submit"
-              className="h-10 bg-inverse-surface px-5 text-[10px] font-bold uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-90"
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="inline-flex items-center gap-2 border border-stone-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-stone-800 transition-colors hover:border-stone-900"
             >
-              Search
+              <span className="material-symbols-outlined text-base">tune</span>
+              <span>{showFilters ? "Hide Filters" : "Show Filters"}</span>
             </button>
+
+            {/* Sorting Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border border-stone-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-stone-800 outline-none hover:border-stone-900"
+            >
+              <option value="newest">Sort: Newest</option>
+              <option value="price-asc">Sort: Price Low to High</option>
+              <option value="price-desc">Sort: Price High to Low</option>
+              <option value="rating">Sort: Top Rated</option>
+            </select>
           </div>
 
-          {showSuggestions && suggestions.length > 0 ? (
-            <div className="absolute left-0 right-0 top-full z-30 mt-2 border border-outline-variant/20 bg-surface-container-lowest shadow-[0px_24px_48px_rgba(0,0,0,0.16)]">
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion._id}
-                  type="button"
-                  onClick={() => selectSuggestion(suggestion)}
-                  className="flex w-full items-center gap-4 border-b border-outline-variant/10 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface-container-low"
-                >
-                  <span className="flex h-12 w-10 shrink-0 overflow-hidden bg-surface-container">
-                    <img
-                      src={suggestion.images?.[0]}
-                      alt=""
-                      className="h-full w-full object-cover object-top"
+          {/* Right Controls (Count) */}
+          <div className="flex items-center gap-5 text-xs font-medium text-stone-600">
+            <span>{sortedAndFilteredItems.length} Products</span>
+          </div>
+        </div>
+
+        {/* Main Content Area (Sidebar Filter + Product Grid) */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          
+          {/* Collapsible Left Filter Sidebar */}
+          {showFilters && (
+            <aside className="w-full lg:w-56 shrink-0 space-y-8 border border-stone-200/80 bg-[#FAFAFA] p-5 rounded-md">
+              
+              {/* Filters List (Main Categories) */}
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-stone-900 mb-3">
+                  Filters
+                </h3>
+                <div className="space-y-2 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer text-stone-600 hover:text-black">
+                    <input
+                      type="radio"
+                      name="mainCategory"
+                      value=""
+                      checked={category === ""}
+                      onChange={() => setCategory("")}
+                      className="accent-stone-900"
                     />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-headline text-lg leading-tight text-on-background">
-                      {suggestion.productName}
-                    </span>
-                    <span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                      {suggestion.brandName}
-                    </span>
-                  </span>
-                  <span className="text-sm text-on-surface">
-                    {formatPrice(suggestion.price)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </form>
+                    <span>All</span>
+                  </label>
+                  {FILTER_CATEGORIES.map((catItem) => (
+                    <label
+                      key={catItem.id}
+                      className="flex items-center gap-2 cursor-pointer text-stone-600 hover:text-black"
+                    >
+                      <input
+                        type="radio"
+                        name="mainCategory"
+                        value={catItem.id}
+                        checked={category === catItem.id}
+                        onChange={() => setCategory(catItem.id)}
+                        className="accent-stone-900"
+                      />
+                      <span>{catItem.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-        <div className="mt-4 flex min-h-5 items-center justify-between gap-4 text-xs text-on-surface-variant">
-          <span>
-            {debouncedQuery
-              ? `${filteredItems.length} results for "${debouncedQuery}"`
-              : `${filteredItems.length} products`}
-          </span>
-          {loading ? <span>Searching...</span> : null}
-        </div>
-      </section>
-
-      {error ? (
-        <section className="mx-auto mb-6 max-w-[1440px] border border-error/30 bg-error-container px-4 py-3 text-sm text-on-error-container">
-          {error}
-        </section>
-      ) : null}
-
-      {items.length === 0 && !loading ? (
-        <section className="mx-auto max-w-[1440px] border border-outline-variant/20 bg-surface-container-lowest px-6 py-12 text-center">
-          <h2 className="font-headline text-3xl text-on-background">
-            No matching products
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-on-surface-variant">
-            Try a different search or price range.
-          </p>
-        </section>
-      ) : (
-        <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[240px_1fr]">
-          <aside className="h-fit border border-outline-variant/20 bg-surface-container-lowest p-6 lg:sticky lg:top-28">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="font-label text-[11px] font-bold uppercase tracking-[0.22em] text-on-background">
-                Filter by price
-              </h2>
-              {minPrice || maxPrice ? (
+              {/* Categories List (Subcategories) */}
+              <div className="border-t border-stone-200 pt-6 mt-6">
                 <button
                   type="button"
-                  onClick={clearPriceFilter}
-                  className="text-[9px] font-bold uppercase tracking-[0.16em] text-on-surface-variant hover:text-on-background"
+                  onClick={() => setIsSubcategoriesOpen(!isSubcategoriesOpen)}
+                  className="flex w-full items-center justify-between mb-3 text-xs font-bold uppercase tracking-[0.16em] text-stone-900"
                 >
-                  Clear
+                  <span>Categories</span>
+                  <span className="material-symbols-outlined text-sm">
+                    {isSubcategoriesOpen ? "expand_less" : "expand_more"}
+                  </span>
                 </button>
-              ) : null}
-            </div>
+                {isSubcategoriesOpen && (
+                  <div className="space-y-2 text-xs max-h-[216px] overflow-y-auto pr-2 custom-scrollbar">
+                    {SUBCATEGORIES.map((subItem) => {
+                      const lower = subItem.toLowerCase();
+                      const isSelected = subCategories.includes(lower);
+                      return (
+                        <label
+                          key={subItem}
+                          className="flex items-center gap-2 cursor-pointer text-stone-600 hover:text-black"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSubCategories([...subCategories, lower]);
+                              } else {
+                                setSubCategories(subCategories.filter(s => s !== lower));
+                              }
+                            }}
+                            className="accent-stone-900"
+                          />
+                          <span>{subItem}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
-            <div className="mt-6 space-y-5">
-              <label className="block">
-                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Minimum
-                </span>
-                <select
-                  value={minPrice}
-                  onChange={(event) => {
-                    const nextMinimum = event.target.value;
-                    setMinPrice(nextMinimum);
-                    if (
-                      maxPrice &&
-                      Number(nextMinimum) > Number(maxPrice)
-                    ) {
-                      setMaxPrice(nextMinimum);
-                    }
-                  }}
-                  className="h-11 w-full border border-outline-variant/30 bg-surface px-3 text-sm text-on-background outline-none focus:border-primary"
+              {/* Price Range Filter */}
+              <div className="border-t border-stone-200 pt-6">
+                <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-stone-900 mb-3">
+                  Price Range
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-xs font-semibold text-stone-800">
+                    <span>{minPrice ? formatPrice(minPrice) : formatPrice(0)}</span>
+                    <span>{maxPrice && maxPrice < 10000 ? formatPrice(maxPrice) : formatPrice(10000) + "+"}</span>
+                  </div>
+
+                  <div className="relative h-5 flex items-center mt-2 px-2">
+                    {/* Background Track */}
+                    <div className="absolute left-2 right-2 h-1 bg-stone-200 rounded-full"></div>
+                    <div 
+                      className="absolute h-1 bg-stone-900 rounded-full"
+                      style={{
+                        left: `calc(0.5rem + ${((minPrice === "" ? 0 : Number(minPrice)) / 10000) * 100}% - ${((minPrice === "" ? 0 : Number(minPrice)) / 10000)}rem)`,
+                        right: `calc(0.5rem + ${100 - ((maxPrice === "" ? 10000 : Math.min(Number(maxPrice), 10000)) / 10000) * 100}% - ${1 - ((maxPrice === "" ? 10000 : Math.min(Number(maxPrice), 10000)) / 10000)}rem)`
+                      }}
+                    ></div>
+                    {/* Min Slider */}
+                    <input
+                      type="range"
+                      min="0"
+                      max="10000"
+                      step="100"
+                      value={minPrice === "" ? 0 : Number(minPrice)}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        const currentMax = maxPrice === "" ? 10000 : Number(maxPrice);
+                        if (val >= currentMax) return;
+                        setMinPrice(val === 0 ? "" : val.toString());
+                      }}
+                      className="absolute left-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-stone-900 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-stone-900 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer z-10"
+                    />
+                    {/* Max Slider */}
+                    <input
+                      type="range"
+                      min="0"
+                      max="10000"
+                      step="100"
+                      value={maxPrice === "" ? 10000 : Math.min(Number(maxPrice), 10000)}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        const currentMin = minPrice === "" ? 0 : Number(minPrice);
+                        if (val <= currentMin) return;
+                        setMaxPrice(val === 10000 ? "" : val.toString());
+                      }}
+                      className="absolute left-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-stone-900 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-stone-900 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer z-20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Clear All Filters Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="w-full border border-stone-300 bg-white py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-stone-800 transition-colors hover:bg-stone-900 hover:text-white"
                 >
-                  <option value="">No minimum</option>
-                  {priceOptions.slice(0, -1).map((price) => (
-                    <option key={price} value={price}>
-                      {formatPrice(price)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  Clear All Filters
+                </button>
+              </div>
 
-              <label className="block">
-                <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Maximum
-                </span>
-                <select
-                  value={maxPrice}
-                  onChange={(event) => {
-                    const nextMaximum = event.target.value;
-                    setMaxPrice(nextMaximum);
-                    if (
-                      nextMaximum &&
-                      minPrice &&
-                      Number(nextMaximum) < Number(minPrice)
-                    ) {
-                      setMinPrice(nextMaximum);
-                    }
-                  }}
-                  className="h-11 w-full border border-outline-variant/30 bg-surface px-3 text-sm text-on-background outline-none focus:border-primary"
-                >
-                  <option value="">No maximum</option>
-                  {priceOptions.slice(1).map((price) => (
-                    <option key={price} value={price}>
-                      {formatPrice(price)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            </aside>
+          )}
 
-              <p className="text-xs leading-5 text-on-surface-variant">
-                Price options increase in {formatPrice(500)} intervals.
-              </p>
-            </div>
-          </aside>
-
-          <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredItems.length === 0 ? (
-              <section className="border border-outline-variant/20 bg-surface-container-lowest px-6 py-12 text-center sm:col-span-2 xl:col-span-3">
-                <h2 className="font-headline text-3xl text-on-background">
-                  No products in this price range
-                </h2>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-on-surface-variant">
-                  Change the minimum or maximum price to see more products.
+          {/* Product Grid Area */}
+          <div className="flex-1 min-w-0 w-full">
+            
+            {loading && !hasLoaded ? (
+              <div className="py-20 text-center text-sm font-medium text-stone-500">
+                Loading luxury collection...
+              </div>
+            ) : sortedAndFilteredItems.length === 0 ? (
+              <div className="border border-stone-200 bg-[#FAFAFA] py-16 px-6 text-center rounded-md">
+                <h3 className="font-headline text-2xl text-stone-900">
+                  No products match your criteria
+                </h3>
+                <p className="mt-2 text-xs text-stone-500 max-w-sm mx-auto">
+                  Try adjusting the price range or clear filters to discover more items.
                 </p>
-              </section>
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="mt-5 inline-flex bg-stone-950 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-wider"
+                >
+                  Clear Filters
+                </button>
+              </div>
             ) : (
-              filteredItems.map((p) => (
-              <Link
-                key={p._id}
-                to={`/product/${p._id}`}
-                className="group block bg-surface-container-lowest"
+              <div
+                className={`grid gap-4 sm:gap-5 ${
+                  showFilters
+                    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+                    : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+                }`}
               >
-                <div className="aspect-[4/5] overflow-hidden bg-surface-container-low">
-                  <img
-                    src={p.images?.[0]}
-                    alt={p.productName}
-                    className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
-                  />
-                </div>
-                <div className="border-x border-b border-outline-variant/15 px-4 py-5 transition-colors group-hover:bg-surface-container-low">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                    {p.brandName}
-                  </div>
-                  <div className="mt-2 flex items-start justify-between gap-4">
-                    <h2 className="font-headline text-xl leading-snug text-on-background">
-                      {p.productName}
-                    </h2>
-                    <div className="shrink-0 pt-1 text-sm text-on-surface">
-                      {formatPrice(p.price)}
+                {sortedAndFilteredItems.map((p, idx) => {
+                  const isWishlisted = wishlist.some(w => w._id === (p._id || p.id));
+                  const hasDiscount = p.discount && p.discount > 0;
+                  const originalPrice = hasDiscount
+                    ? Math.round((p.price * 100) / (100 - p.discount))
+                    : null;
+
+                  return (
+                    <div
+                      key={p._id || p.id || idx}
+                      className="group relative flex flex-col rounded-md overflow-hidden bg-white border border-stone-100 transition-all hover:shadow-md"
+                    >
+                      {/* Product Image Container */}
+                      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#F5F4F0]">
+                        <Link to={`/product/${p._id || p.id}`}>
+                          <img
+                            src={resolveMediaUrl(p.images?.[0] || p.image)}
+                            alt={p.productName || p.name}
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          />
+                        </Link>
+
+                        {/* Top Left Badge (NEW or Discount) */}
+                        <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
+                          {hasDiscount ? (
+                            <span className="bg-red-700 text-white px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase">
+                              -{p.discount}%
+                            </span>
+                          ) : (
+                            <span className="bg-stone-950 text-white px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Top Right Wishlist Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => handleWishlistToggle(p._id || p.id)}
+                          className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-stone-800 backdrop-blur-xs transition-transform hover:scale-110 hover:bg-white"
+                          aria-label="Wishlist"
+                        >
+                          <span className={`material-symbols-outlined text-base ${isWishlisted ? "text-red-600" : ""}`}>
+                            {isWishlisted ? "favorite" : "favorite_border"}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Product Info Box */}
+                      <div className="p-4 flex flex-col flex-1 justify-between bg-white border-t border-stone-100">
+                        <div>
+                          {/* Color Swatches */}
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-stone-900 border border-stone-300" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-stone-300 border border-stone-300" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-900/60 border border-stone-300" />
+                          </div>
+
+                          <Link to={`/product/${p._id || p.id}`}>
+                            <h3 className="font-headline text-base font-medium text-stone-950 line-clamp-1 group-hover:text-stone-600 transition-colors">
+                              {p.productName || p.name}
+                            </h3>
+                          </Link>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-stone-400 mt-0.5">
+                            {p.brandName || "Archivist"}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between pt-2 border-t border-stone-100">
+                          <div className="flex items-center gap-2">
+                            {originalPrice && (
+                              <span className="text-xs text-stone-400 line-through">
+                                {formatPrice(originalPrice)}
+                              </span>
+                            )}
+                            <span className="text-xs font-semibold text-stone-950">
+                              {formatPrice(p.price)}
+                            </span>
+                          </div>
+
+                          {/* Quick Add Button */}
+                          <Link
+                            to={`/product/${p._id || p.id}`}
+                            className="flex h-7 w-7 items-center justify-center rounded-full border border-stone-300 text-stone-800 transition-colors hover:bg-stone-950 hover:border-stone-950 hover:text-white"
+                            aria-label="View product"
+                          >
+                            <span className="material-symbols-outlined text-base">add</span>
+                          </Link>
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
-                </div>
-              </Link>
-              ))
+                  );
+                })}
+              </div>
             )}
+
           </div>
+
         </div>
-      )}
-    </main>
+
+        {/* Embedded Meet Lucas AI Stylist Banner */}
+        <div className="mt-16">
+          <LucasStylistBanner />
+        </div>
+
+        {/* Value Propositions & Trust Badges */}
+        <div className="mt-12">
+          <ValueBadges />
+        </div>
+
+      </div>
+
+      {/* Footer */}
+      <HomeFooter />
+    </div>
   );
 }

@@ -12,7 +12,7 @@ const blogs = [
         subtitle: "A study in utility, weather, and enduring silhouette.",
         excerpt: "From the damp trenches of the Somme to the rain-slicked streets of mid-century cinema, the gabardine shield remains a symbol of utilitarian grace.",
         category: "Outerwear",
-        coverImage: "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1400&q=80",
+        coverImage: "/assets/clean_hero4.png",
         tags: ["trench", "outerwear", "heritage"],
         content: "The trench coat began as a garment of necessity, engineered for wet weather, movement, and discipline. Its genius lies in details that still feel purposeful today: storm flaps, belted waists, epaulettes, and densely woven cotton gabardine.\n\nIn modern wardrobes it has moved beyond military origin into a quieter form of authority, pairing easily with tailoring, denim, or silk. The best examples are not loud. They earn attention through proportion, patina, and the confidence of a garment built to survive more than one season."
     },
@@ -21,7 +21,7 @@ const blogs = [
         subtitle: "Tracing the delicate thread from ancient looms to contemporary ateliers.",
         excerpt: "A study in tactile memory, tracing the delicate thread from the mulberry groves of the East to the modern atelier.",
         category: "Textiles",
-        coverImage: "https://images.unsplash.com/photo-1528459105426-b9548367069b?auto=format&fit=crop&w=1400&q=80",
+        coverImage: "/assets/journalPage/artCraft.png",
         tags: ["silk", "textiles", "craft"],
         content: "Silk is less a fabric than a discipline. Every stage, from cultivation to spinning and finishing, carries the patience of hands that understand tension, light, and time. Its surface changes with movement, catching shadow as readily as shine.\n\nContemporary designers return to silk because it refuses to be simplified. It can be austere in a bias-cut dress, ceremonial in a scarf, or quietly practical as a lining that lets a jacket move with the body. To wear silk well is to respect both fragility and strength."
     },
@@ -30,7 +30,7 @@ const blogs = [
         subtitle: "How careful material choices become a long-term wardrobe philosophy.",
         excerpt: "Redefining longevity in an era of ephemeral trends: how we build wardrobes that outlive the season.",
         category: "Sustainability",
-        coverImage: "https://images.unsplash.com/photo-1508186225823-0963cf9ab0de?auto=format&fit=crop&w=1400&q=80",
+        coverImage: "/assets/journalPage/sustainable.png",
         tags: ["sustainability", "wardrobe", "materials"],
         content: "Sustainability begins before a garment is purchased. It starts with asking whether the object has enough clarity, construction, and emotional permanence to remain useful. A responsible wardrobe is not only made of organic fibers or recycled trims; it is edited with restraint.\n\nMending, tailoring, resale, and careful storage all matter. The most sustainable piece is often the one that avoids obsolescence through better pattern work, honest material, and a silhouette that does not rely on novelty to feel alive."
     },
@@ -39,7 +39,7 @@ const blogs = [
         subtitle: "The small architecture of watches, sleeves, and proportion.",
         excerpt: "A close look at how watches and cuffs frame the hand, carrying rhythm, ritual, and restraint into daily dress.",
         category: "Accessories",
-        coverImage: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=1400&q=80",
+        coverImage: "/assets/journalPage/horology.png",
         tags: ["watches", "accessories", "tailoring"],
         content: "A watch is one of the few accessories that combines instrument and ornament. Its success depends on scale. The cuff must break cleanly, the case must sit without shouting, and the strap should converse with the leather and metal already present in the outfit.\n\nVintage horology teaches restraint because older cases were often smaller, thinner, and more exacting. Worn with tailoring, a watch becomes a punctuation mark rather than a headline, measuring not only time but the wearer's appetite for proportion."
     },
@@ -48,7 +48,7 @@ const blogs = [
         subtitle: "The quiet force of a single tonal wardrobe.",
         excerpt: "The profound impact of a single-tone wardrobe on the psychological presence of the wearer.",
         category: "Styling",
-        coverImage: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1400&q=80",
+        coverImage: "/assets/image2.png",
         tags: ["styling", "monochrome", "minimalism"],
         content: "Monochrome dressing is frequently mistaken for simplicity. In practice, it demands sharper attention to texture, weight, and temperature. A charcoal wool coat, a washed cotton shirt, and a polished leather shoe may share a tonal family while carrying entirely different surfaces.\n\nThis is where depth appears. Without color contrast to carry the composition, fit and material must do more of the work. The reward is presence without noise, a wardrobe language that feels edited, deliberate, and remarkably durable."
     }

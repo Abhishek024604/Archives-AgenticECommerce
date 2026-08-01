@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getMyOrders } from "../api/order";
 import { formatPrice } from "../utils/currency";
+import { resolveMediaUrl } from "../utils/media";
+import HomeNavbar from "../components/home/HomeNavbar";
+import HomeFooter from "../components/home/HomeFooter";
 
 export default function MyOrders() {
   const location = useLocation();
@@ -16,7 +19,7 @@ export default function MyOrders() {
         const res = await getMyOrders();
         setOrders(res.data || []);
       } catch (err) {
-        setError(err?.response?.data?.message || "Failed to load orders.");
+        setError(err?.response?.data?.message || "Failed to load order history.");
       } finally {
         setLoading(false);
       }
@@ -26,102 +29,175 @@ export default function MyOrders() {
   }, []);
 
   return (
-    <main className="bg-surface px-6 py-16 md:px-12">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-12 border-b border-outline-variant/15 pb-8">
-          <p className="font-label text-[10px] uppercase tracking-[0.3em] font-bold text-on-surface-variant">
-            Account
-          </p>
-          <h1 className="mt-4 font-headline text-4xl text-on-background">
-            My Orders
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-on-surface-variant">
-            Review the archive of confirmed purchases.
-          </p>
-        </header>
+    <div className="min-h-screen bg-white text-stone-900 font-sans selection:bg-stone-900 selection:text-white flex flex-col justify-between">
+      <HomeNavbar />
 
-        {location.state?.orderPlaced ? (
-          <div className="mb-8 border border-primary/20 bg-primary/5 p-5 text-sm text-on-background">
-            Order placed successfully{location.state?.orderId ? ` (${location.state.orderId})` : ""}.
+      <main className="mx-auto max-w-[1536px] w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8 flex-1">
+        
+        {/* Breadcrumb Navigation */}
+        <nav className="flex items-center gap-2 text-[11px] font-medium text-stone-500 uppercase tracking-wider">
+          <Link to="/" className="hover:text-stone-900 transition-colors">
+            Home
+          </Link>
+          <span>›</span>
+          <span className="text-stone-900 font-semibold">My Orders</span>
+        </nav>
+
+        {/* Page Header Title */}
+        <div className="border-b border-stone-200 pb-6 flex items-baseline justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="font-headline text-3xl sm:text-5xl font-normal text-stone-950">
+              Order History
+            </h1>
+            <p className="mt-2 text-xs sm:text-sm text-stone-500 font-light">
+              Review your past purchases, shipment statuses, and invoices.
+            </p>
           </div>
-        ) : null}
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            {orders.length} {orders.length === 1 ? "Order" : "Orders"}
+          </span>
+        </div>
 
+        {/* Order Placed Success Banner */}
+        {location.state?.orderPlaced && (
+          <div className="border border-emerald-300 bg-emerald-50 text-emerald-900 p-4 rounded-xl text-xs font-semibold flex items-center gap-3">
+            <span className="material-symbols-outlined text-emerald-600">check_circle</span>
+            <span>
+              Order placed successfully! Order ID: {location.state?.orderId || "Confirmed"}.
+            </span>
+          </div>
+        )}
+
+        {/* Content Section */}
         {error ? (
-          <section className="border border-error/20 bg-error/5 p-8 text-error">
+          <div className="border border-red-200 bg-red-50 p-6 text-xs text-red-700 rounded-xl">
             {error}
-          </section>
+          </div>
         ) : loading ? (
-          <section className="border border-outline-variant/15 bg-surface-container-lowest p-8 text-on-surface-variant shadow-[0px_24px_48px_rgba(47,52,48,0.05)]">
-            Loading orders...
-          </section>
+          <div className="py-20 text-center text-xs font-medium text-stone-500">
+            Loading order history...
+          </div>
         ) : orders.length === 0 ? (
-          <section className="border border-outline-variant/15 bg-surface-container-lowest p-8 shadow-[0px_24px_48px_rgba(47,52,48,0.05)]">
-            <div className="flex h-64 flex-col items-center justify-center text-center">
-              <span className="material-symbols-outlined text-5xl text-outline-variant">
-                receipt_long
-              </span>
-              <h2 className="mt-6 font-headline text-2xl text-on-background">
-                No orders yet
-              </h2>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-on-surface-variant">
-                Once you complete checkout, your orders will appear here.
-              </p>
-            </div>
-          </section>
+          <div className="border border-stone-200 bg-[#FAFAFA] py-16 px-6 text-center rounded-xl">
+            <span className="material-symbols-outlined text-4xl text-stone-400 mb-3">
+              receipt_long
+            </span>
+            <h3 className="font-headline text-2xl text-stone-900">
+              No orders placed yet
+            </h3>
+            <p className="mt-2 text-xs text-stone-500 max-w-sm mx-auto">
+              When you complete a purchase, your order history and tracking info will appear here.
+            </p>
+            <Link
+              to="/products"
+              className="mt-6 inline-block bg-stone-950 text-white px-8 py-3 text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors rounded-md"
+            >
+              Start Shopping
+            </Link>
+          </div>
         ) : (
-          <section className="space-y-6">
-            {orders.map((order) => (
-              <article
-                key={order._id}
-                className="border border-outline-variant/15 bg-surface-container-lowest p-8 shadow-[0px_24px_48px_rgba(47,52,48,0.05)]"
-              >
-                <div className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-outline-variant/15 pb-6">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                      {order.orderId}
-                    </p>
-                    <h2 className="mt-2 font-headline text-2xl text-on-background">
-                      {order.status}
-                    </h2>
-                  </div>
-                  <div className="text-right text-sm text-on-surface-variant">
-                    <p>{new Date(order.createdAt).toLocaleDateString()}</p>
-                    <p className="mt-2 font-headline text-lg text-on-background">
-                      {formatPrice(order.totalAmount)}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-5">
-                  {order.items.map((item, index) => (
-                    <div key={`${order._id}-${index}`} className="flex gap-5">
-                      <div className="h-28 w-20 overflow-hidden bg-surface-container-highest">
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.productName}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-headline text-lg text-on-background">
-                          {item.productName}
-                        </h3>
-                        <p className="mt-1 text-[10px] uppercase tracking-widest text-on-surface-variant">
-                          {item.brandName} / Size {item.size} / Qty {item.quantity}
-                        </p>
-                        <p className="mt-3 text-sm text-on-background">
-                          {formatPrice(item.price)}
-                        </p>
+          <div className="space-y-6">
+            {orders.map((order) => {
+              const statusColor =
+                order.status?.toLowerCase() === "delivered"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : order.status?.toLowerCase() === "shipped"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-amber-100 text-amber-800";
+
+              return (
+                <div
+                  key={order._id}
+                  className="border border-stone-200 bg-[#FAFAFA] p-6 rounded-2xl space-y-6 transition-all hover:bg-white hover:shadow-xs"
+                >
+                  {/* Order Header Info */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                        Order #{order.orderId || order._id?.slice(-8)}
+                      </span>
+                      <div className="mt-1 flex items-center gap-3">
+                        <span className={`px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${statusColor}`}>
+                          {order.status || "Processing"}
+                        </span>
+                        <span className="text-xs text-stone-500">
+                          Placed on {new Date(order.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
                       </div>
                     </div>
-                  ))}
+
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                        Total Amount
+                      </span>
+                      <p className="font-headline text-xl font-medium text-stone-950">
+                        {formatPrice(order.totalAmount)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Order Items */}
+                  <div className="space-y-4">
+                    {order.items.map((item, index) => (
+                      <div
+                        key={`${order._id}-${index}`}
+                        className="flex items-center gap-4 bg-white p-3.5 border border-stone-200/80 rounded-xl"
+                      >
+                        <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-[#F5F4F0] border border-stone-200">
+                          {item.image ? (
+                            <img
+                              src={resolveMediaUrl(item.image)}
+                              alt={item.productName}
+                              className="h-full w-full object-cover object-top"
+                            />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-stone-300">
+                              <span className="material-symbols-outlined text-xl">image</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-stone-400">
+                              {item.brandName || "Archivist"}
+                            </span>
+                            <h4 className="font-headline text-base font-medium text-stone-950 truncate">
+                              {item.productName}
+                            </h4>
+                          </div>
+
+                          <div className="mt-2 flex items-center justify-between text-xs text-stone-600">
+                            <span>Size: <strong className="text-stone-900">{item.size}</strong> • Qty: <strong className="text-stone-900">{item.quantity}</strong></span>
+                            <span className="font-semibold text-stone-950">{formatPrice(item.price)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="pt-2 flex items-center justify-between text-xs">
+                    <span className="text-stone-500">
+                      Standard Express Shipping
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => alert(`Tracking details for ${order.orderId || order._id}`)}
+                      className="border border-stone-300 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-stone-800 hover:bg-stone-950 hover:text-white rounded-md transition-colors"
+                    >
+                      Track Package
+                    </button>
+                  </div>
                 </div>
-              </article>
-            ))}
-          </section>
+              );
+            })}
+          </div>
         )}
-      </div>
-    </main>
+
+      </main>
+
+      <HomeFooter />
+    </div>
   );
 }

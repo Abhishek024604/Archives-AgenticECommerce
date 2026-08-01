@@ -13,6 +13,11 @@ import orderRoutes from "./routes/orderRoutes.js"
 import otpRoutes from "./routes/otpRoutes.js"
 import blogRoutes from "./routes/blogRoutes.js"
 import lucasRoutes from "./routes/lucasRoutes.js"
+import reviewRoutes from "./routes/reviewRoutes.js"
+import wishlistRoutes from "./routes/wishlistRoutes.js"
+import discountRoutes from "./routes/discountRoutes.js"
+import payoutRoutes from "./routes/payoutRoutes.js"
+import { attachMcpServer } from "./mcp/index.js"
 
 import cookieParser from "cookie-parser"
 
@@ -46,6 +51,13 @@ app.use("/api/order", orderRoutes)
 app.use("/api/otp", otpRoutes);
 app.use("/api/blogs", blogRoutes)
 app.use("/api/lucas", lucasRoutes)
+app.use("/api/reviews", reviewRoutes)
+app.use("/api/wishlist", wishlistRoutes)
+app.use("/api/discounts", discountRoutes)
+app.use("/api/payouts", payoutRoutes)
+
+// Attach MCP Server (SSE & Messages)
+attachMcpServer(app)
 
 app.get("/", (req, res) => {
   res.send("Backend is running")

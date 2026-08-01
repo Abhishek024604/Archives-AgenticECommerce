@@ -7,7 +7,8 @@ export const placeOrder = async (req, res) => {
         const order = await orderService.placeOrderService(
             req.user,
             req.body.shippingAddress,
-            req.body.paymentMethod
+            req.body.paymentMethod,
+            req.body.discountCode
         );
 
         res.status(201).json(order);
@@ -58,6 +59,20 @@ export const dispatchSellerOrder = async (req, res) => {
                 ? 403
                 : 400;
 
+        res.status(status).json({ message: err.message });
+    }
+};
+
+export const getSellerOrderById = async (req, res) => {
+    try {
+        if (req.user.role !== "seller") {
+            return res.status(403).json({ message: "Only sellers can access seller orders" });
+        }
+
+        const order = await orderService.getSellerOrderByIdService(req.params.orderId, req.user._id);
+        res.status(200).json(order);
+    } catch (err) {
+        const status = err.message === "Order not found" || err.message === "Order not found or access denied" ? 404 : 500;
         res.status(status).json({ message: err.message });
     }
 };

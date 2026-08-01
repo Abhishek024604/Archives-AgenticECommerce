@@ -78,26 +78,83 @@ export const createBlogService = async (data, user) => {
         contentFormat,
         coverImage,
         category: data.category?.trim() || "Editorial",
+        theme: data.theme?.trim() || "Design & Craft",
         tags: normalizeTags(data.tags),
         author: user._id,
         readTimeMinutes: calculateReadTime(content)
     })
 }
 
-export const getBlogsService = async ({ search, category } = {}) => {
+export const getBlogsService = async ({ search, category, theme, filter, limit = 80 } = {}) => {
     const query = {}
 
     if (category) {
         query.category = category
     }
 
+    if (theme) {
+        query.theme = theme
+    }
+
     if (search) {
         query.$text = { $search: search }
+    }
+
+    const resultLimit = Math.min(Math.max(Number(limit) || 80, 1), 120);
+
+    if (filter === "trending") {
+        const trendingBlogs = await Blog.aggregate([
+            { $match: query },
+            { 
+                $addFields: {
+                    trendingScore: { 
+                        $add: [
+                            { $multiply: ["$readsCount", 10] },
+                            { $divide: ["$totalTimeSpent", 60] }
+                        ]
+                    }
+                }
+            },
+            { $sort: { trendingScore: -1, createdAt: -1 } },
+            { $limit: resultLimit }
+        ]);
+
+        if (trendingBlogs.length === 0 || trendingBlogs[0]?.trendingScore === 0) {
+            const randomBlogs = await Blog.aggregate([
+                { $match: query },
+                { $sample: { size: resultLimit } }
+            ]);
+            return await Blog.populate(randomBlogs, { path: "author", select: "name email role sellerInfo.storeName" });
+        }
+
+        return await Blog.populate(trendingBlogs, { path: "author", select: "name email role sellerInfo.storeName" });
     }
 
     return await Blog.find(query)
         .populate("author", "name email role sellerInfo.storeName")
         .sort({ createdAt: -1 })
+        .limit(resultLimit)
+}
+
+export const logMetricsService = async (id, timeSpent) => {
+    if (!mongoose.Types.ObjectId.isValid(id) && !id) {
+        throw new Error("Invalid blog ID")
+    }
+
+    const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { slug: id }
+    const blog = await Blog.findOne(query)
+
+    if (!blog) {
+        throw new Error("Blog not found")
+    }
+
+    blog.readsCount += 1
+    if (timeSpent && !isNaN(timeSpent)) {
+        blog.totalTimeSpent += Number(timeSpent)
+    }
+
+    await blog.save()
+    return blog
 }
 
 export const getBlogBySlugService = async (slug) => {

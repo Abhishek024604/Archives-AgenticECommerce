@@ -14,6 +14,11 @@ const communitySchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    category: {
+        type: String,
+        enum: ["Fashion", "Lifestyle", "Culture", "Art & Design", "Collectibles", "Other"],
+        default: "Fashion"
+    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

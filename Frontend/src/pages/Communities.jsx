@@ -1,46 +1,170 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   getCommunities,
   joinCommunity,
   leaveCommunity,
+  deleteCommunity
 } from "../api/community";
 import CreateCommunityModal from "../components/CreateCommunityForm";
 import CommunityChat from "../components/CommunityChat";
+import AnnouncementBar from "../components/home/AnnouncementBar";
+import HomeNavbar from "../components/home/HomeNavbar";
+import HomeFooter from "../components/home/HomeFooter";
+import { useAuth } from "../context/AuthContext";
+import { getCommunityImage } from "../utils/communityImage";
 
-const interestIcons = ["texture", "eco", "handyman", "grid_view"];
+const COMMUNITY_CATEGORIES = [
+  "All",
+  "Fashion",
+  "Lifestyle",
+  "Culture",
+  "Art & Design",
+  "Collectibles",
+  "Other",
+];
+
+const TRUST_PILLARS = [
+  {
+    icon: "verified",
+    title: "Curated Spaces",
+    subtitle: "Quality over quantity",
+  },
+  {
+    icon: "groups",
+    title: "Meaningful Connections",
+    subtitle: "Connect with like-minded people",
+  },
+  {
+    icon: "draw",
+    title: "Share & Inspire",
+    subtitle: "Exchange ideas and inspiration",
+  },
+  {
+    icon: "key",
+    title: "Exclusive Access",
+    subtitle: "Members-only drops & events",
+  },
+];
+
+const FEATURED_DEMOS = [
+  {
+    _id: "demo-1",
+    name: "Streetwear",
+    description: "For the culture.",
+    category: "Fashion",
+    memberCount: 6,
+    communityImage: "/assets/communityPage/streetwear.png",
+    avatars: [
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80",
+      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=100&q=80",
+    ],
+  },
+  {
+    _id: "demo-2",
+    name: "Western Dresses",
+    description: "Let's go!",
+    category: "Fashion",
+    memberCount: 2,
+    communityImage: "/assets/communityPage/westernwear.png",
+    avatars: [
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80",
+    ],
+  },
+  {
+    _id: "demo-3",
+    name: "Classical Indian",
+    description: "Let's go classical",
+    category: "Culture",
+    memberCount: 8,
+    communityImage: "/assets/communityPage/classicalIndian.png",
+    avatars: [
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80",
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80",
+    ],
+  },
+  {
+    _id: "demo-4",
+    name: "Minimalistic Lovers",
+    description: "Get an u to become minimalist",
+    category: "Art & Design",
+    memberCount: 4,
+    communityImage: "/assets/communityPage/minimalist.png",
+    avatars: [
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80",
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80",
+    ],
+  },
+];
 
 export default function Communities() {
+  const { user } = useAuth();
   const [communities, setCommunities] = useState([]);
   const [selected, setSelected] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const featuredRef = useRef(null);
 
   useEffect(() => {
-    fetchCommunities();
-  }, []);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const fetchCommunities = async () => {
-    const res = await getCommunities();
-    const nextCommunities = res.data.communities || [];
-    setCommunities(nextCommunities);
+  const fetchCommunities = async (search = "") => {
+    try {
+      const res = await getCommunities(search);
+      const nextCommunities = res.data.communities || [];
+      setCommunities(nextCommunities);
 
-    if (!selected && nextCommunities.length > 0) {
-      setSelected(nextCommunities[0]);
-    } else if (selected) {
-      const refreshedSelected = nextCommunities.find(
-        (community) => community._id === selected._id
-      );
-      setSelected(refreshedSelected || nextCommunities[0] || null);
+      if (!selected && nextCommunities.length > 0) {
+        setSelected(nextCommunities[0]);
+      } else if (selected) {
+        const refreshedSelected = nextCommunities.find(
+          (c) => c._id === selected._id
+        );
+        setSelected(refreshedSelected || nextCommunities[0] || null);
+      }
+    } catch {
+      setCommunities([]);
     }
   };
 
+  useEffect(() => {
+    fetchCommunities(debouncedSearch);
+  }, [debouncedSearch]);
+
   const handleJoin = async (id) => {
-    await joinCommunity(id);
-    await fetchCommunities();
+    try {
+      await joinCommunity(id);
+      await fetchCommunities(debouncedSearch);
+    } catch (e) {
+      alert(e?.response?.data?.message || "Failed to join community");
+    }
   };
 
   const handleLeave = async (id) => {
-    await leaveCommunity(id);
-    await fetchCommunities();
+    try {
+      await leaveCommunity(id);
+      await fetchCommunities(debouncedSearch);
+    } catch (e) {
+      alert(e?.response?.data?.message || "Failed to leave community");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this community? This action cannot be undone.")) return;
+    try {
+      await deleteCommunity(id);
+      setSelected(null);
+      await fetchCommunities(debouncedSearch);
+    } catch (e) {
+      alert(e?.response?.data?.message || "Failed to delete community");
+    }
   };
 
   const selectCommunity = (community) => {
@@ -52,274 +176,427 @@ export default function Communities() {
     });
   };
 
-  const featured = communities.slice(0, 2);
+  const scrollFeatured = (direction) => {
+    if (featuredRef.current) {
+      const offset = direction === "left" ? -340 : 340;
+      featuredRef.current.scrollBy({ left: offset, behavior: "smooth" });
+    }
+  };
+
+  const featuredCommunitiesList = useMemo(() => {
+    if (communities.length > 0) {
+      return [...communities]
+        .sort((a, b) => {
+          const aCount = a.members?.length || a.memberCount || 1;
+          const bCount = b.members?.length || b.memberCount || 1;
+          return bCount - aCount;
+        })
+        .slice(0, 4);
+    }
+    return FEATURED_DEMOS;
+  }, [communities]);
+
+  const filteredCommunities = useMemo(() => {
+    const list = communities.length > 0 ? communities : FEATURED_DEMOS;
+    return list.filter((c) => {
+      const matchesCategory =
+        activeCategory === "All" ||
+        (c.category || "Fashion").toLowerCase() === activeCategory.toLowerCase();
+
+      return matchesCategory;
+    }).slice(0, 8);
+  }, [communities, activeCategory]);
 
   return (
-    <div className="bg-surface text-on-background font-body antialiased">
-      <header className="pt-24 pb-16 px-6 md:px-12 text-center max-w-4xl mx-auto">
-        <h1 className="font-headline text-5xl md:text-7xl font-bold tracking-tighter text-on-background mb-6">
-          The Archivist Guild
-        </h1>
-        <p className="font-headline italic text-xl md:text-2xl text-secondary mb-2">
-          A Collective for Discerning Minds.
-        </p>
-        <p className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant font-bold">
-          Join curated circles of artisans, collectors, and enthusiasts.
-        </p>
-      </header>
+    <div className="min-h-screen bg-white text-stone-900 font-sans selection:bg-stone-900 selection:text-white">
+      {/* Top Announcement Bar */}
+      <AnnouncementBar />
 
-      <main className="max-w-[1440px] mx-auto px-6 md:px-12 pb-32">
-        <section className="mb-32">
-          <div className="flex items-center justify-between mb-12 gap-6">
-            <h2 className="font-label text-xs uppercase tracking-[0.3em] font-bold text-on-surface-variant">
-              Featured Communities
-            </h2>
-            <button
-              onClick={() => setShowModal(true)}
-              className="border border-outline px-5 py-3 text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-surface-container-low transition-colors"
-            >
-              Create Community
-            </button>
-          </div>
+      {/* Main Navbar */}
+      <HomeNavbar />
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-y-24 md:gap-x-12">
-            {featured[0] ? (
-              <article className="md:col-span-7 group">
-                <div className="relative overflow-hidden bg-surface-container-low aspect-[4/5] md:aspect-[16/10]">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.8),transparent_32%),linear-gradient(135deg,rgba(47,52,48,0.08),transparent_55%)]" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-headline text-[7rem] md:text-[11rem] leading-none tracking-tighter text-on-surface/10">
-                      {featured[0].name?.slice(0, 1) || "A"}
-                    </span>
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/20 to-transparent" />
-                </div>
-                <div className="mt-8 md:pl-16">
-                  <span className="font-label text-[10px] tracking-[0.2em] text-on-surface-variant font-bold uppercase">
-                    {featured[0].members?.length || 0} Members
-                  </span>
-                  <h3 className="font-headline text-4xl mt-2 mb-4 group-hover:translate-x-2 transition-transform duration-500">
-                    {featured[0].name}
-                  </h3>
-                  <p className="font-body text-on-surface-variant max-w-md leading-relaxed mb-6">
-                    {featured[0].description}
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    <button
-                      onClick={() => selectCommunity(featured[0])}
-                      className="bg-primary text-on-primary px-8 py-4 font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-                    >
-                      Enter the Circle
-                    </button>
-                    <button
-                      onClick={() => handleJoin(featured[0]._id)}
-                      className="border border-outline text-on-surface px-8 py-4 font-label text-xs uppercase tracking-widest hover:bg-surface-container-low transition-colors"
-                    >
-                      Join
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ) : null}
+      <main className="mx-auto max-w-[1536px] px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+        
+        {/* 1. Hero Header Section */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          <div className="lg:col-span-6 pr-0 lg:pr-6">
+            <h1 className="font-headline text-4xl sm:text-5xl lg:text-6xl font-normal leading-[1.08] text-stone-950">
+              The Archivist Guild
+            </h1>
+            <p className="mt-4 font-headline italic text-lg sm:text-xl text-stone-600">
+              A collective for discerning minds.
+            </p>
+            <p className="mt-3 text-xs sm:text-sm text-stone-500 font-light leading-relaxed max-w-md">
+              Join curated circles of artisans, collectors, and style enthusiasts.
+            </p>
 
-            {featured[1] ? (
-              <article className="md:col-span-5 group">
-                <div className="relative overflow-hidden bg-surface-container-low aspect-[4/5]">
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(47,52,48,0.04),transparent_50%),repeating-linear-gradient(90deg,transparent,transparent_24px,rgba(47,52,48,0.05)_24px,rgba(47,52,48,0.05)_25px)]" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-headline text-[6rem] md:text-[9rem] leading-none tracking-tighter text-on-surface/10">
-                      {featured[1].name?.slice(0, 1) || "B"}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-8">
-                  <span className="font-label text-[10px] tracking-[0.2em] text-on-surface-variant font-bold uppercase">
-                    {featured[1].members?.length || 0} Members
-                  </span>
-                  <h3 className="font-headline text-3xl mt-2 mb-4 group-hover:translate-x-2 transition-transform duration-500">
-                    {featured[1].name}
-                  </h3>
-                  <p className="font-body text-on-surface-variant leading-relaxed mb-6">
-                    {featured[1].description}
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    <button
-                      onClick={() => selectCommunity(featured[1])}
-                      className="bg-primary text-on-primary px-8 py-4 font-label text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-                    >
-                      Enter
-                    </button>
-                    <button
-                      onClick={() => handleJoin(featured[1]._id)}
-                      className="border border-outline text-on-surface px-8 py-4 font-label text-xs uppercase tracking-widest hover:bg-surface-container-low transition-colors"
-                    >
-                      Join
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="py-15 flex flex-col items-center text-center">
-          <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">
-            format_quote
-          </span>
-          <p className="font-headline text-3xl md:text-4xl text-secondary max-w-3xl leading-snug italic px-6">
-            "Curation is the antidote to the digital noise. We do not gather
-            for the sake of volume, but for the clarity of craftsmanship."
-          </p>
-          <div className=" h-1 w-px bg-outline-variant/30" />
-        </section>
-
-        <section className="mt-24">
-          <div className="mb-12">
-            <h2 className="font-label text-xs uppercase tracking-[0.3em] font-bold text-on-surface-variant">
-              Browse Communities
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0.5 bg-outline-variant/15 border border-outline-variant/15">
-            {communities.length === 0 ? (
-              <div className="col-span-full bg-surface p-10 text-on-surface-variant">
-                No communities available yet.
-              </div>
-            ) : (
-              communities.map((community, index) => {
-                const icon = interestIcons[index % interestIcons.length];
-
-                return (
-                  <div
-                    key={community._id}
-                    className="bg-surface p-10 hover:bg-surface-container-lowest transition-colors group"
-                  >
-                    <div className="h-12 w-12 flex items-center justify-center bg-surface-container-low mb-8">
-                      <span className="material-symbols-outlined text-primary-dim">
-                        {icon}
-                      </span>
-                    </div>
-                    <h4 className="font-headline text-xl mb-4">{community.name}</h4>
-                    <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-8 min-h-[4rem]">
-                      {community.description}
-                    </p>
-                    <div className="flex items-center justify-between mt-auto">
-                      <span className="font-label text-[9px] tracking-widest text-outline uppercase font-bold">
-                        {community.members?.length || 0} Active
-                      </span>
-                      <button
-                        onClick={() => selectCommunity(community)}
-                        className="text-primary-dim font-label text-[10px] uppercase tracking-widest font-bold border-b border-primary-dim/30 hover:border-primary-dim pb-0.5 transition-all"
-                      >
-                        Join
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        <section id="community-salon" className="mt-32">
-          <div className="flex items-center justify-between mb-8 gap-6">
-            <div>
-              <h2 className="font-label text-xs uppercase tracking-[0.3em] font-bold text-on-surface-variant">
-                Community Salon
-              </h2>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("browse-section")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="bg-stone-950 text-white px-7 py-3 text-xs font-bold uppercase tracking-[0.18em] transition-transform hover:scale-[1.02] hover:bg-black"
+              >
+                Explore Communities
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="border border-stone-400 bg-white text-stone-900 px-7 py-3 text-xs font-bold uppercase tracking-[0.18em] transition-colors hover:border-stone-900 hover:bg-stone-50"
+              >
+                Create Community
+              </button>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[4px] border border-outline-variant/30 bg-surface-container-lowest shadow-[0_24px_80px_rgba(47,52,48,0.06)]">
-            <div className="grid grid-cols-1 lg:grid-cols-[370px_minmax(0,1fr)]">
-              <aside className="flex h-[680px] min-h-0 flex-col border-b border-outline-variant/20 bg-surface-container-lowest lg:border-b-0 lg:border-r">
-                <div className="shrink-0 border-b border-outline-variant/20 px-8 py-7">
-                  <p className="font-label text-[10px] uppercase tracking-[0.28em] font-bold text-on-surface-variant">
-                    All Circles
+          {/* Right Hero Image Collage */}
+          <div className="lg:col-span-6 grid grid-cols-12 gap-4">
+            <div className="col-span-7 aspect-[4/5] overflow-hidden rounded-none bg-stone-200 shadow-xs">
+              <img
+                src="/assets/communityPage/streetwear.png"
+                alt="Archivist Guild Member"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="col-span-5 flex flex-col gap-4">
+              <div className="aspect-square overflow-hidden rounded-none bg-stone-200 shadow-xs">
+                <img
+                  src="/assets/communityPage/minimalist.png"
+                  alt="Flatlay accessories"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="aspect-[4/3] overflow-hidden rounded-none bg-stone-200 shadow-xs">
+                <img
+                  src="/assets/communityPage/vintage.png"
+                  alt="Reading journal"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 2. Trust Pillars Bar */}
+        <section className="bg-[#F9F9F8] py-8 px-6 rounded-none border border-stone-200">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
+            {TRUST_PILLARS.map((pillar) => (
+              <div key={pillar.title} className="flex items-center gap-3 justify-center md:justify-start">
+                <span className="material-symbols-outlined text-2xl text-stone-700 shrink-0">
+                  {pillar.icon}
+                </span>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-stone-900 leading-tight">
+                    {pillar.title}
+                  </h4>
+                  <p className="mt-0.5 text-[11px] text-stone-500">
+                    {pillar.subtitle}
                   </p>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                  {communities.length === 0 ? (
-                    <div className="px-6 py-8 text-sm text-on-surface-variant">
-                      No circles available yet.
-                    </div>
-                  ) : (
-                    communities.map((community) => {
-                      const isSelected = selected?._id === community._id;
-                      const initial = community.name?.slice(0, 1) || "?";
+              </div>
+            ))}
+          </div>
+        </section>
 
-                      return (
-                        <button
-                          key={community._id}
-                          onClick={() => setSelected(community)}
-                          className={`group flex w-full items-start gap-4 rounded-[3px] px-5 py-5 text-left transition-colors ${
-                            isSelected
-                              ? "bg-[linear-gradient(90deg,#edebe5,rgba(237,235,229,0.35))]"
-                              : "hover:bg-surface-container-low"
-                          }`}
-                        >
-                          <span
-                            className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border font-headline text-lg ${
-                              isSelected
-                                ? "border-primary/20 bg-surface text-on-background"
-                                : "border-outline-variant/25 bg-surface-container-low text-on-surface-variant"
-                            }`}
-                          >
-                            {initial}
+        {/* 3. Featured Communities */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-headline text-2xl sm:text-3xl font-normal text-stone-950">
+              Featured Communities
+            </h2>
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("browse-section")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="text-xs font-semibold uppercase tracking-wider text-stone-700 hover:text-black"
+              >
+                View all
+              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => scrollFeatured("left")}
+                  className="flex h-8 w-8 items-center justify-center rounded-none border border-stone-300 text-stone-700 transition-colors hover:border-black hover:bg-stone-900 hover:text-white"
+                  aria-label="Scroll left"
+                >
+                  <span className="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollFeatured("right")}
+                  className="flex h-8 w-8 items-center justify-center rounded-none border border-stone-300 text-stone-700 transition-colors hover:border-black hover:bg-stone-900 hover:text-white"
+                  aria-label="Scroll right"
+                >
+                  <span className="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            ref={featuredRef}
+            className="flex gap-6 overflow-x-auto pb-4 scrollbar-none scroll-smooth snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {featuredCommunitiesList.map((item) => (
+              <div
+                key={item._id}
+                className="w-[280px] sm:w-[310px] shrink-0 snap-start flex flex-col rounded-none overflow-hidden border border-stone-300 bg-[#F6F4F0] p-4 transition-all hover:shadow-md"
+              >
+                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-none bg-stone-200">
+                  <img
+                    src={getCommunityImage(item)}
+                    alt={item.name}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute top-3 left-3 bg-stone-900/80 backdrop-blur-xs text-white px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-none">
+                    {item.members?.length || item.memberCount || 1} MEMBERS
+                  </span>
+                </div>
+
+                <div className="mt-4 flex flex-col flex-1 justify-between">
+                  <div>
+                    <h3 className="font-headline text-xl font-medium text-stone-950">
+                      {item.name}
+                    </h3>
+                    <p className="mt-1 text-xs text-stone-600 font-light line-clamp-2">
+                      {item.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-stone-300/60 flex items-center justify-between">
+                    <div className="flex -space-x-2 overflow-hidden">
+                      {item.avatars?.map((img, i) => (
+                        <img
+                          key={i}
+                          src={img}
+                          alt=""
+                          className="inline-block h-7 w-7 rounded-none ring-2 ring-white object-cover"
+                        />
+                      ))}
+                      <span className="flex h-7 w-7 items-center justify-center rounded-none bg-stone-200 text-[10px] font-bold text-stone-700 ring-2 ring-white">
+                        +{(item.members?.length || item.memberCount || 1) - (item.avatars?.length || 0)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => selectCommunity(item)}
+                      className="border border-stone-800 bg-white px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-stone-900 transition-colors hover:bg-stone-950 hover:text-white"
+                    >
+                      Enter Circle
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 4. Browse All Communities Section */}
+        <section id="browse-section" className="pt-4">
+          <h2 className="font-headline text-2xl sm:text-3xl font-normal text-stone-950 mb-6">
+            Browse All Communities
+          </h2>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 pb-4 mb-8">
+            {/* Category Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {COMMUNITY_CATEGORIES.map((cat) => {
+                const isActive = activeCategory.toLowerCase() === cat.toLowerCase();
+
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    className={`shrink-0 px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 ${
+                      isActive
+                        ? "border-stone-950 text-stone-950 font-bold"
+                        : "border-transparent text-stone-500 hover:text-stone-900"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input Box */}
+            <div className="relative w-full md:w-72">
+              <input
+                type="text"
+                placeholder="Search communities..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border border-stone-300 bg-stone-50 px-3 py-2 text-xs text-stone-900 outline-none focus:border-stone-900"
+              />
+              <span className="material-symbols-outlined absolute right-2.5 top-2 text-base text-stone-400">
+                search
+              </span>
+            </div>
+          </div>
+
+          {/* Communities Grid Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredCommunities.map((c) => (
+              <div
+                key={c._id}
+                className="flex items-start gap-4 p-4 border border-stone-200 rounded-none bg-[#F9F9F8] transition-all hover:bg-white hover:shadow-sm"
+              >
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-none bg-stone-200">
+                  <img
+                    src={getCommunityImage(c)}
+                    alt={c.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                  <div>
+                    <h3 className="font-headline text-base font-medium text-stone-950 truncate">
+                      {c.name}
+                    </h3>
+                    <p className="text-xs text-stone-500 line-clamp-1 mt-0.5">
+                      {c.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-[10px] font-bold text-stone-600 uppercase tracking-wider">
+                    <span>{c.members?.length || c.memberCount || 1} Members</span>
+                    <button
+                      type="button"
+                      onClick={() => selectCommunity(c)}
+                      className="text-stone-900 font-bold hover:underline"
+                    >
+                      Enter →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link
+              to="/communities/all"
+              className="inline-block border border-stone-300 bg-white px-8 py-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-900 hover:bg-stone-950 hover:text-white transition-colors"
+            >
+              Discover More Communities
+            </Link>
+          </div>
+        </section>
+
+        {/* 5. Community Salon & Community Room Chat */}
+        <section id="community-salon" className="pt-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-headline text-2xl sm:text-3xl font-normal text-stone-950">
+              Community Salon
+            </h2>
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+              All circles
+            </span>
+          </div>
+
+          <div className="overflow-hidden rounded-none border border-stone-300 bg-white shadow-xs">
+            <div className="flex flex-col lg:flex-row h-[800px] lg:h-[700px]">
+              
+              {/* Left Circles Selection Sidebar */}
+              <aside className="w-full lg:w-5/12 flex flex-col border-b lg:border-b-0 lg:border-r border-stone-200 bg-[#FAFAFA] h-[40%] lg:h-full min-h-0">
+                <div className="border-b border-stone-200 p-5 bg-white">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-stone-400">
+                    All Circles ({communities.length})
+                  </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {(communities.length > 0 ? communities : FEATURED_DEMOS).map((circle) => {
+                    const isSelected = selected?._id === circle._id;
+
+                    return (
+                      <button
+                        key={circle._id}
+                        type="button"
+                        onClick={() => setSelected(circle)}
+                        className={`flex w-full items-center justify-between p-4 rounded-none text-left transition-all ${
+                          isSelected
+                            ? "bg-white border border-stone-300 shadow-2xs"
+                            : "hover:bg-stone-100/80 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-stone-200 font-headline text-lg font-bold text-stone-800">
+                            {circle.name?.slice(0, 1) || "C"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-headline text-base font-semibold text-stone-950 truncate">
+                              {circle.name}
+                            </h4>
+                            <p className="text-xs text-stone-500 truncate mt-0.5">
+                              {circle.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0 ml-2">
+                          <span className="text-[10px] font-medium text-stone-400">
+                            {circle.members?.length || circle.memberCount || 1} Active
                           </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-headline text-lg text-on-background">
-                              {community.name}
-                            </span>
-                            <span className="mt-1 block line-clamp-2 text-sm leading-relaxed text-on-surface-variant">
-                              {community.description}
-                            </span>
-                            <span className="mt-3 block font-label text-[9px] font-bold uppercase tracking-[0.18em] text-outline">
-                              {community.members?.length || 0} active members
-                            </span>
+                          <span className="material-symbols-outlined text-base text-stone-400">
+                            chevron_right
                           </span>
-                          <span
-                            className={`material-symbols-outlined mt-2 text-base transition-transform ${
-                              isSelected
-                                ? "text-primary"
-                                : "text-outline group-hover:translate-x-1"
-                            }`}
-                          >
-                            arrow_forward
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </aside>
 
-              <div className="h-[680px] min-h-0 bg-surface">
+              {/* Right Live Chat Workspace */}
+              <div className="w-full lg:w-7/12 flex flex-col bg-white h-[60%] lg:h-full min-h-0">
                 {selected ? (
                   <CommunityChat
                     communityId={selected._id}
                     Name={selected.name}
                     onJoin={() => handleJoin(selected._id)}
                     onLeave={() => handleLeave(selected._id)}
+                    onDelete={() => handleDelete(selected._id)}
                     description={selected.description}
-                    memberCount={selected.members?.length || 0}
+                    memberCount={selected.members?.length || selected.memberCount || 1}
+                    isAdmin={user && (selected.createdBy?._id === user._id || selected.createdBy === user._id)}
+                    isMember={user && selected.members?.includes(user._id)}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center px-8 text-center text-on-surface-variant">
-                    Select a community to start chatting.
+                  <div className="flex flex-1 items-center justify-center p-12 text-center text-xs text-stone-400">
+                    Select a circle on the left to start conversing.
                   </div>
                 )}
               </div>
+
             </div>
           </div>
         </section>
+
       </main>
 
-      {showModal ? (
+      {/* Creation Modal */}
+      {showModal && (
         <CreateCommunityModal
           close={() => setShowModal(false)}
-          refresh={fetchCommunities}
+          refresh={() => fetchCommunities(debouncedSearch)}
         />
-      ) : null}
+      )}
+
+      {/* Footer */}
+      <HomeFooter />
     </div>
   );
 }

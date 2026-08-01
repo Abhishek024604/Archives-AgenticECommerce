@@ -6,4 +6,6 @@ export const joinCommunity = (communityId) => API.post(`/communities/join/${comm
 
 export const leaveCommunity = (communityId) => API.post(`/communities/leave/${communityId}`)
 
-export const getCommunities = () => API.get("/communities")
+export const deleteCommunity = (communityId) => API.delete(`/communities/${communityId}`)
+
+export const getCommunities = (search = "") => API.get(`/communities${search ? `?search=${encodeURIComponent(search)}` : ""}`)

@@ -1,6 +1,7 @@
 import Order from "../models/Order.model.js";
 import Cart from "../models/Cart.model.js";
 import Product from "../models/Product.model.js";
+import Discount from "../models/Discount.model.js";
 
 const validateShippingAddress = (shippingAddress) => {
     if (!shippingAddress) {
@@ -14,7 +15,7 @@ const validateShippingAddress = (shippingAddress) => {
     }
 }
 
-export const placeOrderService = async (user, shippingAddress, paymentMethod = "CARD") =>{
+export const placeOrderService = async (user, shippingAddress, paymentMethod = "CARD", discountCode = null) =>{
     validateShippingAddress(shippingAddress)
 
     const cart = await Cart.findOne({
@@ -25,8 +26,24 @@ export const placeOrderService = async (user, shippingAddress, paymentMethod = "
         throw new Error("cart is empty")
     }
 
+    let appliedDiscount = null;
+    if (discountCode) {
+        appliedDiscount = await Discount.findOne({ code: discountCode });
+        if (!appliedDiscount) {
+            throw new Error("Invalid discount code");
+        }
+        const now = new Date();
+        if (appliedDiscount.status !== "Active" || appliedDiscount.validityStart > now || appliedDiscount.validityEnd < now) {
+            throw new Error("Discount code is not active or has expired");
+        }
+        if (appliedDiscount.usage >= appliedDiscount.maxUsage) {
+            throw new Error("Discount code usage limit reached");
+        }
+    }
+
     const orderItems = []
     let subtotal = 0;
+    let eligibleSubtotal = 0;
 
     for (const item of cart.items) {
         const product = item.product
@@ -46,6 +63,12 @@ export const placeOrderService = async (user, shippingAddress, paymentMethod = "
 
         variant.stock -= item.quantity
 
+        const itemTotal = product.price * item.quantity;
+
+        if (appliedDiscount && product.seller.toString() === appliedDiscount.seller.toString()) {
+            eligibleSubtotal += itemTotal;
+        }
+
         orderItems.push({
             productId: product._id,
             sellerId: product.seller,
@@ -57,17 +80,30 @@ export const placeOrderService = async (user, shippingAddress, paymentMethod = "
             quantity: item.quantity
         })
 
-        subtotal += product.price * item.quantity
+        subtotal += itemTotal
     }
 
-    const discount = 0
-    const totalAmount = subtotal - discount
+    let discountAmount = 0;
+    if (appliedDiscount && eligibleSubtotal > 0) {
+        if (appliedDiscount.type === "Percentage") {
+            discountAmount = (eligibleSubtotal * appliedDiscount.value) / 100;
+        } else if (appliedDiscount.type === "Fixed Amount") {
+            discountAmount = Math.min(appliedDiscount.value, eligibleSubtotal);
+        }
+        
+        appliedDiscount.usage += 1;
+        appliedDiscount.revenueGenerated += (eligibleSubtotal - discountAmount);
+        await appliedDiscount.save();
+    }
+
+    const totalAmount = subtotal - discountAmount
 
     const order = await Order.create({
         user: user._id,
         items: orderItems,
         subtotal,
-        discount,
+        discount: discountAmount,
+        discountCode: discountCode || null,
         totalAmount,
         paymentMethod,
         shippingAddress,
@@ -76,6 +112,11 @@ export const placeOrderService = async (user, shippingAddress, paymentMethod = "
     })
 
     for (let item of cart.items) {
+        if (item.product && typeof item.product.salesCount === 'number') {
+            item.product.salesCount += item.quantity;
+        } else if (item.product) {
+            item.product.salesCount = item.quantity;
+        }
         await item.product.save();
     }
 
@@ -182,3 +223,19 @@ export const dispatchSellerOrderService = async (orderId, sellerId) => {
 
     return toSellerOrder(order.toObject(), sellerId, sellerProductIdSet)
 }
+export const getSellerOrderByIdService = async (orderId, sellerId) => {
+    const order = await Order.findById(orderId).populate("user", "name email").lean();
+    if (!order) {
+        throw new Error("Order not found");
+    }
+
+    const sellerProductIds = await getSellerProductIds(sellerId);
+    const sellerProductIdSet = new Set(sellerProductIds.map((id) => id.toString()));
+    
+    const sellerOrder = toSellerOrder(order, sellerId, sellerProductIdSet);
+    if (!sellerOrder) {
+        throw new Error("Order not found or access denied");
+    }
+
+    return sellerOrder;
+};

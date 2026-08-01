@@ -22,7 +22,10 @@ export const getBlogs = async (req, res) => {
     try {
         const blogs = await blogService.getBlogsService({
             search: req.query.search,
-            category: req.query.category
+            category: req.query.category,
+            theme: req.query.theme,
+            filter: req.query.filter,
+            limit: req.query.limit
         })
 
         res.status(200).json({
@@ -36,6 +39,25 @@ export const getBlogs = async (req, res) => {
         })
     }
 }
+
+export const logMetrics = async (req, res) => {
+    try {
+        const { timeSpent } = req.body
+        const blog = await blogService.logMetricsService(req.params.id, timeSpent)
+
+        res.status(200).json({
+            success: true,
+            blog
+        })
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+
 
 export const getBlogBySlug = async (req, res) => {
     try {

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+﻿import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../context/WishlistContext";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { wishlist } = useWishlist();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,13 +45,11 @@ export default function Navbar() {
         ? location.pathname.startsWith("/archives")
         : location.pathname === path;
 
-    return `pb-1 text-[10px] uppercase tracking-[0.22em] transition-opacity hover:opacity-70 ${
-      active ? "font-bold text-white" : "font-normal text-white/65"
-    }`;
+    return "pb-1 text-[10px] uppercase tracking-[0.22em] transition-opacity hover:opacity-70 ";
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10 bg-inverse-surface/92 text-white backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-white/10 bg-black/92 text-white backdrop-blur-xl">
       <div className="mx-auto flex w-full items-center justify-start gap-4 px-5 py-5 md:justify-between md:px-10">
         <div className="flex min-w-0 items-center gap-8">
           <Link
@@ -94,6 +94,18 @@ export default function Navbar() {
             <span className="material-symbols-outlined">search</span>
           </Link>
           <Link
+            to="/wishlist"
+            aria-label="Wishlist"
+            className="relative hover:opacity-70 transition-opacity duration-300 active:scale-95 ease-in-out"
+          >
+            <span className="material-symbols-outlined">favorite</span>
+            {wishlist && wishlist.length > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white shadow-xs">
+                {wishlist.length}
+              </span>
+            )}
+          </Link>
+          <Link
             to="/cart"
             aria-label="Open cart"
             className="hover:opacity-70 transition-opacity duration-300 active:scale-95 ease-in-out"
@@ -112,12 +124,12 @@ export default function Navbar() {
                 <span className="material-symbols-outlined">person</span>
               </button>
               {isMenuOpen ? (
-                <div className="absolute right-0 top-full mt-4 min-w-[220px] border border-white/10 bg-surface-container-lowest shadow-[0px_24px_48px_rgba(0,0,0,0.35)]">
-                  <div className="border-b border-outline-variant/30 px-5 py-4">
-                    <p className="font-headline text-lg text-on-background">
+                <div className="absolute right-0 top-full mt-4 min-w-[220px] border border-stone-200 bg-white shadow-[0px_24px_48px_rgba(0,0,0,0.35)] text-stone-900">
+                  <div className="border-b border-stone-200 px-5 py-4">
+                    <p className="font-headline text-lg text-stone-950">
                       {user.name}
                     </p>
-                    <p className="mt-1 text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant">
+                    <p className="mt-1 text-[10px] uppercase tracking-[0.2em] font-bold text-stone-500">
                       {user.role}
                     </p>
                   </div>
@@ -126,7 +138,7 @@ export default function Navbar() {
                       <Link
                         to="/seller"
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex w-full items-center justify-between px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] font-bold text-on-surface hover:bg-surface-container-low transition-colors"
+                        className="flex w-full items-center justify-between px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] font-bold text-stone-900 hover:bg-stone-50 transition-colors"
                       >
                         Dashboard
                         <span className="material-symbols-outlined text-base">
@@ -137,7 +149,7 @@ export default function Navbar() {
                     <Link
                       to="/orders"
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex w-full items-center justify-between px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] font-bold text-on-surface hover:bg-surface-container-low transition-colors"
+                      className="flex w-full items-center justify-between px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] font-bold text-stone-900 hover:bg-stone-50 transition-colors"
                     >
                       My Orders
                       <span className="material-symbols-outlined text-base">
@@ -147,7 +159,7 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex w-full items-center justify-between px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] font-bold text-on-surface hover:bg-surface-container-low transition-colors"
+                      className="flex w-full items-center justify-between px-3 py-3 text-left text-[11px] uppercase tracking-[0.2em] font-bold text-stone-900 hover:bg-stone-50 transition-colors"
                     >
                       Logout
                       <span className="material-symbols-outlined text-base">

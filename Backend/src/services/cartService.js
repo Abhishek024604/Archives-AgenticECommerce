@@ -51,6 +51,34 @@ export const updateCartItemService = async (userId, productId, quantity, size) =
     return cart
 }
 
+export const updateCartItemSizeService = async (userId, productId, oldSize, newSize) => {
+    const cart = await Cart.findOne({ user: userId });
+    if (!cart) throw new Error("Cart not found");
+
+    const existingItemIndex = cart.items.findIndex(
+        item => item.product.toString() === productId && item.size === oldSize
+    );
+
+    if (existingItemIndex === -1) throw new Error("Cart item not found");
+    const existingItem = cart.items[existingItemIndex];
+
+    const newItemIndex = cart.items.findIndex(
+        item => item.product.toString() === productId && item.size === newSize
+    );
+
+    if (newItemIndex !== -1 && newItemIndex !== existingItemIndex) {
+        // Merge quantities
+        cart.items[newItemIndex].quantity += existingItem.quantity;
+        // Remove old item
+        cart.items.splice(existingItemIndex, 1);
+    } else {
+        existingItem.size = newSize;
+    }
+
+    await cart.save();
+    return cart;
+};
+
 export const removeCartItemService = async (userId, productId, size) =>{
     const cart = await Cart.findOne({ user: userId });
 

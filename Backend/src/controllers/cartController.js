@@ -45,6 +45,23 @@ export const updateCartItem = async (req, res) => {
     }
 };
 
+export const updateCartItemSize = async (req, res) => {
+    try {
+        const { productId, oldSize, newSize } = req.body;
+        
+        const cart = await cartService.updateCartItemSizeService(
+            req.userId,
+            productId,
+            oldSize,
+            newSize
+        );
+        
+        res.status(200).json(cart);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 export const removeCartItem = async (req, res) => {
     try {
         const { productId, size } = req.body;

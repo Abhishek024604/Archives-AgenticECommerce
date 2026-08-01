@@ -10,6 +10,19 @@ const productSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        category: {
+            type: String,
+            enum: ["women", "men", "footwear", "bags", "perfumes", "accessories", "home & lifestyle"],
+            required: true,
+            default: "men",
+            lowercase: true,
+            trim: true
+        },
+        subCategory: {
+            type: String,
+            lowercase: true,
+            trim: true
+        },
         price: {
             type: Number,
             required: true
@@ -23,6 +36,10 @@ const productSchema = new mongoose.Schema(
             default: 0
         },
         discount: {
+            type: Number,
+            default: 0
+        },
+        salesCount: {
             type: Number,
             default: 0
         },

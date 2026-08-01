@@ -3,20 +3,20 @@ import { chatWithLucas } from "../api/lucas";
 import { useAuth } from "../context/AuthContext";
 
 const QUICK_PROMPTS = [
-  "Give me today's operations overview",
-  "Which products are low on stock?",
-  "How much revenue is waiting to be processed?",
-  "Show my latest unprocessed orders",
+  "Beach wedding outfit under ₹15k",
+  "Minimal white sneakers for men",
+  "Which items are low on stock?",
+  "Give me today's store overview",
 ];
 
 const TOOL_LABELS = {
   getSellerOverview: "store overview",
-  searchProducts: "products",
-  getInventory: "inventory",
-  getOrders: "orders",
-  getRevenue: "revenue",
-  getCustomers: "customers",
-  getCommunities: "communities",
+  searchProducts: "products catalog",
+  getInventory: "inventory status",
+  getOrders: "recent orders",
+  getRevenue: "revenue metrics",
+  getCustomers: "customer data",
+  getCommunities: "community circles",
 };
 
 export default function LucasSeller() {
@@ -48,9 +48,17 @@ export default function LucasSeller() {
     }
   }, [isOpen, messages, isThinking]);
 
-  if (user?.role !== "seller") {
-    return null;
-  }
+  useEffect(() => {
+    const handleOpenLucas = (event) => {
+      setIsOpen(true);
+      if (event.detail?.prompt) {
+        submitMessage(event.detail.prompt);
+      }
+    };
+
+    window.addEventListener("open-lucas-chat", handleOpenLucas);
+    return () => window.removeEventListener("open-lucas-chat", handleOpenLucas);
+  }, []);
 
   const submitMessage = async (content) => {
     const trimmed = content.trim();
@@ -95,60 +103,68 @@ export default function LucasSeller() {
     submitMessage(input);
   };
 
+  if (!user || user.role !== "seller") {
+    return null;
+  }
+
   return (
     <>
       {isOpen ? (
         <section
-          aria-label="Lucas Seller Operating System"
-          className="fixed inset-x-3 bottom-24 z-[70] flex max-h-[min(42rem,calc(100vh-7rem))] flex-col overflow-hidden border border-outline-variant bg-surface-container-lowest shadow-[0_28px_80px_rgba(0,0,0,0.55)] sm:inset-x-auto sm:right-6 sm:w-[25rem]"
+          aria-label="Lucas AI Assistant Window"
+          className="fixed inset-x-3 bottom-24 z-[70] flex max-h-[min(42rem,calc(100vh-7rem))] flex-col overflow-hidden rounded-2xl border border-stone-300 bg-white text-stone-900 shadow-[0_24px_70px_rgba(0,0,0,0.3)] sm:inset-x-auto sm:right-6 sm:w-[26rem]"
         >
-          <header className="flex items-center justify-between border-b border-outline-variant/40 bg-surface-container px-5 py-4">
+          {/* Header */}
+          <header className="flex items-center justify-between border-b border-stone-800 bg-stone-950 px-5 py-4 text-white">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-on-primary">
-                <span className="material-symbols-outlined">work</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-900 border border-amber-400/40 text-amber-400">
+                <span className="material-symbols-outlined text-lg">auto_awesome</span>
               </div>
               <div>
-                <h2 className="font-headline text-lg font-bold text-on-background">
-                  Lucas
+                <h2 className="font-headline text-base font-medium text-white flex items-center gap-2">
+                  <span>Lucas</span>
+                  <span className="text-[9px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">
+                    Business Assistant
+                  </span>
                 </h2>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                  Seller Operations
+                <p className="text-[10px] text-stone-400 font-light">
+                  Store Operations & Intelligence
                 </p>
               </div>
             </div>
+
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="flex h-9 w-9 items-center justify-center text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-background"
+              className="flex h-8 w-8 items-center justify-center text-stone-400 transition-colors hover:bg-stone-800 hover:text-white rounded-full"
               aria-label="Close Lucas"
             >
-              <span className="material-symbols-outlined">close</span>
+              <span className="material-symbols-outlined text-lg">close</span>
             </button>
           </header>
 
+          {/* Chat Messages */}
           <div
             ref={scrollRef}
-            className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5"
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-[#F9F9F8] p-5"
           >
             {messages.length === 0 ? (
               <div>
-                <p className="font-headline text-xl text-on-background">
-                  What needs attention at{" "}
-                  {user.sellerInfo?.storeName || "your store"}?
+                <p className="font-headline text-lg text-stone-950">
+                  How can Lucas assist you today?
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
-                  I can check live inventory, orders, revenue, customers, and
-                  communities.
+                <p className="mt-1.5 text-xs leading-relaxed text-stone-600 font-light">
+                  Ask for inventory status, order updates, revenue metrics, or live store data.
                 </p>
-                <div className="mt-5 grid gap-2">
+                <div className="mt-4 grid gap-2">
                   {QUICK_PROMPTS.map((prompt) => (
                     <button
                       key={prompt}
                       type="button"
                       onClick={() => submitMessage(prompt)}
-                      className="border border-outline-variant/50 bg-surface px-4 py-3 text-left text-xs leading-relaxed text-on-surface transition-colors hover:border-primary hover:bg-surface-container"
+                      className="border border-stone-200 bg-white px-3.5 py-2.5 text-left text-xs text-stone-800 transition-colors hover:border-stone-950 hover:bg-[#F6F4F0] rounded-lg shadow-2xs font-medium"
                     >
-                      {prompt}
+                      ✨ {prompt}
                     </button>
                   ))}
                 </div>
@@ -159,14 +175,14 @@ export default function LucasSeller() {
                   key={`${message.role}-${index}`}
                   className={
                     message.role === "user"
-                      ? "ml-10 bg-primary px-4 py-3 text-sm leading-relaxed text-on-primary"
-                      : "mr-4 border border-outline-variant/30 bg-surface px-4 py-3 text-sm leading-relaxed text-on-surface"
+                      ? "ml-8 rounded-2xl rounded-tr-xs bg-stone-950 px-4 py-3 text-xs leading-relaxed text-white shadow-xs"
+                      : "mr-4 rounded-2xl rounded-tl-xs border border-stone-200 bg-white px-4 py-3 text-xs leading-relaxed text-stone-800 shadow-xs"
                   }
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
                   {message.toolsUsed?.length ? (
-                    <p className="mt-3 border-t border-outline-variant/30 pt-2 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant">
-                      Checked{" "}
+                    <p className="mt-2.5 border-t border-stone-200/80 pt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">
+                      Consulted{" "}
                       {[...new Set(message.toolsUsed)]
                         .map((tool) => TOOL_LABELS[tool] || tool)
                         .join(", ")}
@@ -177,29 +193,31 @@ export default function LucasSeller() {
             )}
 
             {isThinking ? (
-              <div className="mr-16 border border-outline-variant/30 bg-surface px-4 py-3 text-sm text-on-surface-variant">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined animate-pulse">
+              <div className="mr-12 rounded-xl border border-stone-200 bg-white p-3.5 text-xs text-stone-600 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-amber-500 animate-spin text-base">
                     progress_activity
                   </span>
-                  Checking your live store data...
+                  <span>Lucas is analyzing your business data...</span>
                 </div>
               </div>
             ) : null}
 
             {error ? (
-              <div className="border border-error/30 bg-error-container/40 px-4 py-3 text-xs leading-relaxed text-on-error-container">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs leading-relaxed text-red-700">
                 {error}
               </div>
             ) : null}
           </div>
 
+          {/* Input Form */}
           <form
             onSubmit={handleSubmit}
-            className="border-t border-outline-variant/40 bg-surface-container p-4"
+            className="border-t border-stone-200 bg-white p-4"
           >
-            <div className="flex items-end gap-2 border border-outline-variant bg-surface px-3 py-2 focus-within:border-primary">
-              <textarea
+            <div className="flex items-center gap-2 border border-stone-300 bg-stone-50 px-3 py-1.5 rounded-xl focus-within:border-stone-950 focus-within:bg-white">
+              <input
+                type="text"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={(event) => {
@@ -208,39 +226,43 @@ export default function LucasSeller() {
                     submitMessage(input);
                   }
                 }}
-                rows={1}
                 maxLength={2000}
-                placeholder="Ask Lucas about your store..."
-                className="max-h-28 min-h-10 flex-1 resize-none bg-transparent py-2 text-sm text-on-surface outline-none placeholder:text-on-surface-variant"
+                placeholder="Ask Lucas AI..."
+                className="flex-1 bg-transparent py-2 text-xs text-stone-900 outline-none placeholder:text-stone-400"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isThinking}
-                className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary text-on-primary transition-colors hover:bg-primary-dim disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-stone-950 text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Send message to Lucas"
               >
-                <span className="material-symbols-outlined">arrow_upward</span>
+                <span className="material-symbols-outlined text-base">arrow_upward</span>
               </button>
             </div>
-            <p className="mt-2 text-center text-[9px] text-on-surface-variant">
-              Lucas reads live seller data. This version cannot change it.
-            </p>
           </form>
         </section>
       ) : null}
 
+      {/* Floating Lucas AI Assistant Button */}
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="fixed bottom-6 right-6 z-[70] flex h-14 items-center gap-3 rounded-full bg-primary px-4 text-on-primary shadow-[0_16px_40px_rgba(0,0,0,0.45)] transition-transform hover:scale-105 active:scale-95"
-        aria-label={isOpen ? "Close Lucas" : "Open Lucas"}
+        className="fixed bottom-6 right-6 z-[70] flex h-14 w-14 items-center justify-center gap-0 rounded-full bg-stone-950 border border-amber-400/40 text-white shadow-[0_16px_40px_rgba(0,0,0,0.4)] transition-all hover:scale-105 active:scale-95 hover:border-amber-400 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] group"
+        aria-label={isOpen ? "Close Lucas AI" : "Open Lucas AI"}
         aria-expanded={isOpen}
       >
-        <span className="material-symbols-outlined">
-          {isOpen ? "close" : "work"}
+        <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3 items-center justify-center">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
         </span>
-        <span className="pr-1 text-[10px] font-bold uppercase tracking-[0.18em]">
-          Lucas
+
+        <span className="material-symbols-outlined text-amber-400 text-2xl">
+          {isOpen ? "close" : "auto_awesome"}
+        </span>
+
+        {/* Tooltip */}
+        <span className="absolute right-full mr-4 whitespace-nowrap rounded-lg bg-stone-950 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-amber-400 opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:mr-3 pointer-events-none shadow-lg border border-amber-400/20">
+          Lucas AI
         </span>
       </button>
     </>

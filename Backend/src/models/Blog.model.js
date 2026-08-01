@@ -44,6 +44,12 @@ const blogSchema = new mongoose.Schema(
             trim: true,
             default: "Editorial"
         },
+        theme: {
+            type: String,
+            enum: ["Sustainability", "Design & Craft", "Watches", "Fragrance", "Horology & Tailoring", "Culture & Heritage", "Quiet Luxury"],
+            default: "Design & Craft",
+            trim: true
+        },
         tags: {
             type: [String],
             default: []
@@ -56,6 +62,14 @@ const blogSchema = new mongoose.Schema(
         readTimeMinutes: {
             type: Number,
             default: 1
+        },
+        readsCount: {
+            type: Number,
+            default: 0
+        },
+        totalTimeSpent: {
+            type: Number,
+            default: 0
         }
     },
     { timestamps: true }

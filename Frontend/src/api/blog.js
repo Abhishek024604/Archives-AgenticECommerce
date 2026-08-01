@@ -9,3 +9,5 @@ export const createBlog = (data) => API.post("/blogs", data)
 export const updateBlog = (id, data) => API.put(`/blogs/${id}`, data)
 
 export const deleteBlog = (id) => API.delete(`/blogs/${id}`)
+
+export const logBlogMetrics = (id, timeSpent) => API.post(`/blogs/${id}/metrics`, { timeSpent })

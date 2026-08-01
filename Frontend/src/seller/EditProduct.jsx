@@ -1,13 +1,16 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { API } from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { SUBCATEGORIES } from "../utils/categories";
 
 export default function EditProduct() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [product, setProduct] = useState(null);
+  const [category, setCategory] = useState("men");
+  const [subCategory, setSubCategory] = useState("");
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,6 +23,8 @@ export default function EditProduct() {
         setError("");
         const res = await API.get(`/products/${id}`);
         setProduct(res.data);
+        if (res.data?.category) setCategory(res.data.category);
+        if (res.data?.subCategory) setSubCategory(res.data.subCategory);
         setVariants(
           (res.data?.variants || []).map((variant) => ({
             size: variant.size || "",
@@ -62,15 +67,10 @@ export default function EditProduct() {
       stock: Number(variant.stock) || 0,
     }));
 
-    if (normalizedVariants.some((variant) => !variant.size)) {
-      setError("Every variant must have a size.");
-      return;
-    }
-
     try {
       setSaving(true);
       setError("");
-      await API.put(`/products/${id}`, { variants: normalizedVariants });
+      await API.put(`/products/${id}`, { variants: normalizedVariants, category, subCategory });
       navigate("/seller");
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to update inventory");
@@ -92,7 +92,7 @@ export default function EditProduct() {
   if (loading) {
     return (
       <main className="mx-auto max-w-5xl px-6 py-16 md:px-12">
-        <div className="border border-outline-variant/15 bg-surface-container-lowest p-10 text-on-surface-variant">
+        <div className="border border-stone-200/15 bg-white p-10 text-stone-500">
           Loading product inventory...
         </div>
       </main>
@@ -102,7 +102,7 @@ export default function EditProduct() {
   if (error && !product) {
     return (
       <main className="mx-auto max-w-5xl px-6 py-16 md:px-12">
-        <div className="border border-error/20 bg-error/5 p-10 text-error">
+        <div className="border border-red-600/20 bg-error/5 p-10 text-red-600">
           {error}
         </div>
       </main>
@@ -112,11 +112,11 @@ export default function EditProduct() {
   if (!canEdit) {
     return (
       <main className="mx-auto max-w-5xl px-6 py-16 md:px-12">
-        <div className="border border-outline-variant/15 bg-surface-container-lowest p-10 text-center">
-          <h1 className="font-headline text-3xl text-on-background">
+        <div className="border border-stone-200/15 bg-white p-10 text-center">
+          <h1 className="font-headline text-3xl text-stone-950">
             You cannot edit this inventory
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-4 text-sm leading-relaxed text-stone-500">
             Only the seller who owns this product can update its stock.
           </p>
         </div>
@@ -128,26 +128,26 @@ export default function EditProduct() {
     <main className="mx-auto max-w-5xl px-6 py-12 md:px-12">
       <header className="mb-12 flex flex-wrap items-end justify-between gap-6">
         <div>
-          <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+          <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
             Inventory Editor
           </span>
-          <h1 className="font-headline text-4xl tracking-tighter text-on-background md:text-5xl">
+          <h1 className="font-headline text-4xl tracking-tighter text-stone-950 md:text-5xl">
             {product.productName}
           </h1>
-          <p className="mt-3 text-sm uppercase tracking-[0.2em] text-on-surface-variant">
+          <p className="mt-3 text-sm uppercase tracking-[0.2em] text-stone-500">
             {product.brandName}
           </p>
         </div>
         <Link
           to="/seller"
-          className="border border-outline px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container-high"
+          className="border border-stone-300 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-stone-900 transition-colors hover:bg-stone-100"
         >
           Back to Dashboard
         </Link>
       </header>
 
-      <div className="mb-10 grid gap-8 border border-outline-variant/15 bg-surface-container-lowest p-6 md:grid-cols-[180px_minmax(0,1fr)] md:p-8">
-        <div className="overflow-hidden bg-surface-container">
+      <div className="mb-10 grid gap-8 border border-stone-200/15 bg-white p-6 md:grid-cols-[180px_minmax(0,1fr)] md:p-8">
+        <div className="overflow-hidden bg-stone-200">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
@@ -155,7 +155,7 @@ export default function EditProduct() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full min-h-44 items-center justify-center text-on-surface-variant">
+            <div className="flex h-full min-h-44 items-center justify-center text-stone-500">
               <span className="material-symbols-outlined">image</span>
             </div>
           )}
@@ -177,21 +177,56 @@ export default function EditProduct() {
 
       <form
         onSubmit={submit}
-        className="border border-outline-variant/15 bg-surface-container-lowest p-6 md:p-8"
+        className="border border-stone-200/15 bg-white p-6 md:p-8"
       >
+        <div className="mb-6">
+          <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
+            Product Category
+          </label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full border border-stone-200/30 bg-stone-50 p-3 text-sm text-stone-950 outline-none focus:border-stone-900"
+          >
+            <option value="women">Women</option>
+            <option value="men">Men</option>
+            <option value="footwear">Footwear</option>
+            <option value="bags">Bags</option>
+            <option value="perfumes">Perfumes</option>
+            <option value="accessories">Accessories</option>
+            <option value="home & lifestyle">Home & Lifestyle</option>
+          </select>
+        </div>
+
+        <div className="mb-6">
+          <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
+            Product Subcategory
+          </label>
+          <select
+            value={subCategory}
+            onChange={(e) => setSubCategory(e.target.value)}
+            className="w-full border border-stone-200/30 bg-stone-50 p-3 text-sm text-stone-950 outline-none focus:border-stone-900"
+          >
+            <option value="">Select Subcategory</option>
+            {SUBCATEGORIES.map((cat) => (
+              <option key={cat} value={cat.toLowerCase()}>{cat}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="font-headline text-2xl text-on-background">
+            <h2 className="font-headline text-2xl text-stone-950">
               Variant Stock
             </h2>
-            <p className="mt-2 text-sm text-on-surface-variant">
+            <p className="mt-2 text-sm text-stone-500">
               Update stock for each size variant and save the inventory.
             </p>
           </div>
           <button
             type="button"
             onClick={addVariant}
-            className="border border-outline px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface transition-colors hover:bg-surface-container-high"
+            className="border border-stone-300 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-stone-900 transition-colors hover:bg-stone-100"
           >
             Add Variant
           </button>
@@ -201,10 +236,10 @@ export default function EditProduct() {
           {variants.map((variant, index) => (
             <div
               key={`${variant.size}-${index}`}
-              className="grid gap-4 border border-outline-variant/15 bg-surface p-4 md:grid-cols-[minmax(0,1fr)_180px_120px]"
+              className="grid gap-4 border border-stone-200/15 bg-surface p-4 md:grid-cols-[minmax(0,1fr)_180px_120px]"
             >
               <div>
-                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
                   Size
                 </label>
                 <input
@@ -212,12 +247,12 @@ export default function EditProduct() {
                   onChange={(event) =>
                     updateVariant(index, "size", event.target.value)
                   }
-                  className="w-full border-0 border-b border-outline bg-surface-container-low px-0 py-3 text-sm focus:border-primary focus:ring-0"
+                  className="w-full border-0 border-b border-stone-300 bg-stone-50 px-0 py-3 text-sm focus:border-stone-900 focus:ring-0"
                   placeholder="M"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
                   Stock
                 </label>
                 <input
@@ -227,14 +262,14 @@ export default function EditProduct() {
                   onChange={(event) =>
                     updateVariant(index, "stock", event.target.value)
                   }
-                  className="w-full border-0 border-b border-outline bg-surface-container-low px-0 py-3 text-sm focus:border-primary focus:ring-0"
+                  className="w-full border-0 border-b border-stone-300 bg-stone-50 px-0 py-3 text-sm focus:border-stone-900 focus:ring-0"
                 />
               </div>
               <div className="flex items-end">
                 <button
                   type="button"
                   onClick={() => removeVariant(index)}
-                  className="w-full border border-outline px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface transition-colors hover:border-error hover:text-error"
+                  className="w-full border border-stone-300 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-stone-900 transition-colors hover:border-red-600 hover:text-red-600"
                 >
                   Remove
                 </button>
@@ -244,7 +279,7 @@ export default function EditProduct() {
         </div>
 
         {error ? (
-          <div className="mt-6 border border-error/20 bg-error/5 p-4 text-sm text-error">
+          <div className="mt-6 border border-red-600/20 bg-error/5 p-4 text-sm text-red-600">
             {error}
           </div>
         ) : null}
@@ -253,13 +288,13 @@ export default function EditProduct() {
           <button
             type="submit"
             disabled={saving}
-            className="bg-primary px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-on-primary transition-colors hover:bg-primary-dim disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-stone-950 px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-stone-950-dim disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Inventory"}
           </button>
           <Link
             to="/seller"
-            className="border border-outline px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-on-surface transition-colors hover:bg-surface-container-high"
+            className="border border-stone-300 px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-stone-900 transition-colors hover:bg-stone-100"
           >
             Cancel
           </Link>
@@ -271,11 +306,12 @@ export default function EditProduct() {
 
 function SummaryCard({ label, value }) {
   return (
-    <div className="border border-outline-variant/15 bg-surface p-5">
-      <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+    <div className="border border-stone-200/15 bg-surface p-5">
+      <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-stone-500">
         {label}
       </span>
-      <p className="mt-3 font-headline text-2xl text-on-background">{value}</p>
+      <p className="mt-3 font-headline text-2xl text-stone-950">{value}</p>
     </div>
   );
 }
+

@@ -33,8 +33,14 @@ connectDB()
 
 const app = express()
 
+const allowedOrigins = [
+  "http://localhost:5173", 
+  "http://127.0.0.1:5173",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: allowedOrigins,
   credentials: true
 }))
 
@@ -73,7 +79,7 @@ const server = app.listen(PORT, () => {
 // attach socket.io to that server
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true
   }
 })

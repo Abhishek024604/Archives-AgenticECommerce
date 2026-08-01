@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
+import { resolveMediaUrl } from "../../utils/media";
 
 const COMMUNITIES = [
   {
-    title: "Entrepreneur Mindset",
+    title: "Minimalist Design",
     members: "12.4K Members",
-    image: "https://images.unsplash.com/photo-1556761175-5973dc0f32d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    image: "/assets/communityPage/minimalist.png",
     avatars: [
       "https://randomuser.me/api/portraits/men/32.jpg",
       "https://randomuser.me/api/portraits/women/44.jpg",
@@ -12,9 +13,9 @@ const COMMUNITIES = [
     ]
   },
   {
-    title: "Sustainable Living",
+    title: "Classical Indian",
     members: "8.7K Members",
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    image: "/assets/communityPage/classicalIndian.png",
     avatars: [
       "https://randomuser.me/api/portraits/women/65.jpg",
       "https://randomuser.me/api/portraits/men/11.jpg",
@@ -24,7 +25,7 @@ const COMMUNITIES = [
   {
     title: "Streetwear Culture",
     members: "18.1K Members",
-    image: "https://images.unsplash.com/photo-1523398002811-999aa8095e1e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    image: "/assets/communityPage/streetwear.png",
     avatars: [
       "https://randomuser.me/api/portraits/men/22.jpg",
       "https://randomuser.me/api/portraits/women/33.jpg",
@@ -32,9 +33,9 @@ const COMMUNITIES = [
     ]
   },
   {
-    title: "Design & Creativity",
+    title: "Vintage Collectibles",
     members: "15.3K Members",
-    image: "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    image: "/assets/communityPage/vintage.png",
     avatars: [
       "https://randomuser.me/api/portraits/women/21.jpg",
       "https://randomuser.me/api/portraits/men/25.jpg",
@@ -78,7 +79,7 @@ export default function PlatformCommunitiesSection() {
                 {/* Background Image */}
                 <div className="absolute inset-0 z-0 bg-stone-800">
                   <img
-                    src={community.image}
+                    src={resolveMediaUrl(community.image)}
                     alt={community.title}
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70 group-hover:opacity-60"
                   />

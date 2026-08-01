@@ -39,8 +39,9 @@ export default function Home() {
         const categoryImages = {};
         const allValidImages = [];
         const extractImages = (res) => {
-            if (res.data && Array.isArray(res.data)) {
-                res.data.forEach(p => {
+            const dataArr = res.data?.data || res.data;
+            if (dataArr && Array.isArray(dataArr)) {
+                dataArr.forEach(p => {
                     const cat = p.category || 'default';
                     if (!categoryImages[cat]) categoryImages[cat] = [];
                     if (p.images && p.images.length > 0) {
@@ -87,11 +88,14 @@ export default function Home() {
           };
         };
 
-        if (newRes.data && Array.isArray(newRes.data)) {
-            setNewArrivals(newRes.data.map(formatProduct));
+        const newData = newRes.data?.data || newRes.data;
+        if (newData && Array.isArray(newData)) {
+            setNewArrivals(newData.map(formatProduct));
         }
-        if (bestRes.data && Array.isArray(bestRes.data)) {
-            setBestSellers(bestRes.data.map(formatProduct));
+        
+        const bestData = bestRes.data?.data || bestRes.data;
+        if (bestData && Array.isArray(bestData)) {
+            setBestSellers(bestData.map(formatProduct));
         }
       } catch (err) {
         console.error("Failed to load products for home:", err);
@@ -102,11 +106,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-stone-900 font-sans selection:bg-stone-900 selection:text-white">
-      {/* 1. Announcement Bar */}
-      <AnnouncementBar />
+      <div className="sticky top-0 z-50 w-full bg-white shadow-sm transition-all duration-300">
+        {/* 1. Announcement Bar */}
+        <AnnouncementBar />
 
-      {/* 2. Header & Main Category Navigation */}
-      <HomeNavbar wishlistCount={wishlist.length} />
+        {/* 2. Header & Main Category Navigation */}
+        <HomeNavbar wishlistCount={wishlist.length} />
+      </div>
 
       {/* 3. Hero Editorial Section */}
       <HeroSection />

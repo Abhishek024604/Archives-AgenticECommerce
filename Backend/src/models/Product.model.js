@@ -48,11 +48,11 @@ const productSchema = new mongoose.Schema(
             required: true
         },
         variants: [
-  {
-    size: String,
-    stock: Number
-  }
-],
+            {
+                size: String,
+                stock: Number
+            }
+        ],
         seller: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User"

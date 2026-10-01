@@ -111,13 +111,29 @@ const hydrateProductSellers = async (products) => Product.populate(products, pro
 const fallbackProductSearch = async (query, limit, category, subCategory) => {
     const filter = {};
     if (query) {
-        const pattern = new RegExp(escapeRegex(query), "i");
+        const words = query.split(/\s+/).filter(Boolean);
+        const regexPatterns = words.map(word => {
+            let baseWord = escapeRegex(word);
+            if (baseWord.length > 3) {
+                if (baseWord.endsWith('ies')) {
+                    baseWord = baseWord.slice(0, -3) + '(y|ies)';
+                } else if (baseWord.endsWith('es')) {
+                    baseWord = baseWord.slice(0, -2) + '(es)?';
+                } else if (baseWord.endsWith('s')) {
+                    baseWord = baseWord.slice(0, -1) + 's?';
+                } else {
+                    baseWord = baseWord + 's?';
+                }
+            }
+            return `(?=.*${baseWord})`;
+        });
+        const pattern = new RegExp(`^${regexPatterns.join('')}`, "i");
         filter.$or = [
             { productName: pattern },
             { brandName: pattern }
         ];
     }
-    if (category) {
+    if (category && String(category).toLowerCase() !== 'all') {
         filter.category = String(category).toLowerCase();
     }
     if (subCategory) {
@@ -152,7 +168,7 @@ export const getAllProductsService = async ({ q, category, subCategory, limit = 
     const resultLimit = Math.min(Math.max(Number(limit) || 1000, 1), 5000);
 
     const filterObj = {};
-    if (category) {
+    if (category && String(category).toLowerCase() !== 'all') {
         filterObj.category = String(category).toLowerCase();
     }
     if (subCategory) {
@@ -213,7 +229,7 @@ export const getAllProductsService = async ({ q, category, subCategory, limit = 
         const products = await Product.aggregate(buildProductSearchPipeline(query, resultLimit));
 
         let filtered = products;
-        if (category) {
+        if (category && String(category).toLowerCase() !== 'all') {
             filtered = filtered.filter(p => String(p.category || "").toLowerCase() === String(category).toLowerCase());
         }
         if (subCategory) {
@@ -384,4 +400,9 @@ export const deleteProductService = async (id, user) => {
     await product.deleteOne();
 
     return { message: "Product deleted" };
+};
+
+export const getSubCategoriesService = async () => {
+    const subCategories = await Product.distinct("subCategory", { subCategory: { $nin: ["", null] } });
+    return subCategories.sort((a, b) => a.localeCompare(b));
 };

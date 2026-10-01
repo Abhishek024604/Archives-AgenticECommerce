@@ -82,7 +82,7 @@ export default function Cart() {
     );
   }
 
-  const items = cart.items || [];
+  const items = (cart.items || []).filter(it => it.product);
   const subtotal = items.reduce(
     (sum, it) => sum + (it.product?.price || 0) * it.quantity,
     0
@@ -138,6 +138,7 @@ export default function Cart() {
                 </p>
                 <Link
                   to="/products"
+                  data-agent-action="explore-collection"
                   className="mt-6 inline-block bg-stone-950 text-white px-8 py-3 text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors rounded-md"
                 >
                   Explore Collection
@@ -209,6 +210,8 @@ export default function Cart() {
                         <div className="flex items-center gap-3 border border-stone-300 bg-stone-50 px-3 py-1 rounded-md text-xs">
                           <button
                             type="button"
+                            data-agent-action="decrease-qty"
+                            data-agent-id={it.product._id}
                             onClick={() =>
                               changeQty(
                                 it.product._id,
@@ -225,6 +228,8 @@ export default function Cart() {
                           </span>
                           <button
                             type="button"
+                            data-agent-action="increase-qty"
+                            data-agent-id={it.product._id}
                             onClick={() =>
                               changeQty(it.product._id, it.size, it.quantity + 1)
                             }
@@ -237,6 +242,8 @@ export default function Cart() {
                         {/* Remove Action */}
                         <button
                           type="button"
+                          data-agent-action="remove-item"
+                          data-agent-id={it.product._id}
                           onClick={() => removeItem(it.product._id, it.size)}
                           className="text-[10px] font-bold uppercase tracking-wider text-red-600 hover:underline"
                         >
@@ -251,6 +258,7 @@ export default function Cart() {
                 <div className="flex justify-end pt-2">
                   <button
                     type="button"
+                    data-agent-action="clear-cart"
                     onClick={onClear}
                     className="text-xs text-stone-500 hover:text-stone-900 font-medium underline"
                   >
@@ -316,6 +324,7 @@ export default function Cart() {
                   />
                   <button
                     type="submit"
+                    data-agent-action="apply-promo"
                     className="bg-stone-950 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-black rounded-md transition-colors"
                   >
                     Apply
@@ -326,6 +335,7 @@ export default function Cart() {
               {/* Checkout CTA */}
               <button
                 type="button"
+                data-agent-action="proceed-to-checkout"
                 onClick={() => navigate("/checkout")}
                 disabled={items.length === 0}
                 className="w-full bg-stone-950 text-white py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-black transition-colors rounded-md disabled:opacity-40 disabled:cursor-not-allowed"

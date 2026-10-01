@@ -3,21 +3,31 @@ import { getAllProductsService, getProductByIdService, createProductService, upd
 import { getCartService, addToCartService, removeCartItemService } from "../services/cartService.js";
 import { getMyOrdersService, placeOrderService, dispatchSellerOrderService } from "../services/orderService.js";
 import { executeLucasTool } from "../services/lucasTools.js";
+import { executeAdvancedProductSearch } from "../harness/storeTools.js";
 
 export const registerTools = (server) => {
     // 1. Search Products
     server.tool(
         "search_products",
-        "Search the e-commerce catalog for products",
+        "Search products in the e-commerce catalog. Available categories: women, men, footwear, bags, perfumes, accessories, home & lifestyle.",
         {
-            q: z.string().optional().describe("Search query for product name or brand"),
-            limit: z.number().optional().describe("Maximum number of products to return (default 20)")
+            q: z.string().optional().describe("Free-text search keyword or title phrase"),
+            category: z.enum(["women", "men", "footwear", "bags", "perfumes", "accessories", "home & lifestyle", "all"]).optional().describe("Category filter"),
+            subCategory: z.string().optional().describe("Subcategory or garment type (e.g. shirt, blazer, boots, sneakers, jeans, dress)"),
+            brandName: z.string().optional().describe("Brand name filter"),
+            minPrice: z.number().optional().describe("Minimum price in INR"),
+            maxPrice: z.number().optional().describe("Maximum price in INR"),
+            minRating: z.number().optional().describe("Minimum average rating (0.0 to 5.0)"),
+            minDiscount: z.number().optional().describe("Minimum discount percentage"),
+            size: z.string().optional().describe("Size in stock (e.g. S, M, L, UK 8, 32)"),
+            sortBy: z.enum(["price_asc", "price_desc", "rating_desc", "newest", "discount_desc", "relevance"]).optional().describe("Sort order"),
+            limit: z.number().optional().describe("Maximum number of products to return (default 10)")
         },
-        async ({ q, limit }) => {
+        async (args) => {
             try {
-                const products = await getAllProductsService({ q, limit: limit || 20 });
+                const result = await executeAdvancedProductSearch(args);
                 return {
-                    content: [{ type: "text", text: JSON.stringify(products, null, 2) }]
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
                 };
             } catch (error) {
                 return {
@@ -174,6 +184,96 @@ export const registerTools = (server) => {
                     content: [{ type: "text", text: `Error placing order: ${error.message}` }]
                 };
             }
+        }
+    );
+
+    // ==========================================
+    // UI AUTOMATION (VISUAL) TOOLS
+    // ==========================================
+
+    server.tool(
+        "ui_navigate",
+        "Visually navigate the user to a specific page or category. The cursor will move and click the link.",
+        {
+            path: z.string().describe("The URL path to navigate to (e.g., '/', '/products', '/cart')"),
+            target: z.string().describe("The internal target key for the nav link (e.g., 'men', 'women', 'home')")
+        },
+        async ({ path, target }) => {
+            return { content: [{ type: "text", text: `Cursor moved and clicked ${target}. Navigating to ${path}.` }] };
+        }
+    );
+
+    server.tool(
+        "ui_search",
+        "Visually search for a product. The cursor will move to the search bar, type the query, and press enter.",
+        {
+            query: z.string().describe("The search text to type"),
+            category: z.enum(["women", "men", "footwear", "bags", "perfumes", "accessories", "home & lifestyle", "all"]).optional().describe("Category filter to apply alongside the query")
+        },
+        async ({ query, category }) => {
+            // Also return the search results so the LLM knows what will appear on screen
+            try {
+                const products = await getAllProductsService({ q: query, category, limit: 10 });
+                return { content: [{ type: "text", text: `Typed "${query}" in search. Found products: ${JSON.stringify(products.map(p => ({id: p._id, name: p.productName, price: p.price})), null, 2)}` }] };
+            } catch (e) {
+                return { content: [{ type: "text", text: `Typed "${query}".` }] };
+            }
+        }
+    );
+
+    server.tool(
+        "ui_click_product",
+        "Visually click on a product card to open its detail page. Use this after a search to select a specific item.",
+        {
+            productId: z.string().describe("The unique MongoDB ObjectId of the product to click")
+        },
+        async ({ productId }) => {
+            try {
+                const product = await getProductByIdService(productId);
+                return { content: [{ type: "text", text: `Clicked product. Viewing details for: ${JSON.stringify(product, null, 2)}` }] };
+            } catch (e) {
+                return { content: [{ type: "text", text: `Clicked product ${productId}.` }] };
+            }
+        }
+    );
+
+    server.tool(
+        "ui_select_size",
+        "Visually click a size bubble on the product details page.",
+        {
+            size: z.string().describe("The size to select (e.g., 'S', 'M', '8', '10')")
+        },
+        async ({ size }) => {
+            return { content: [{ type: "text", text: `Clicked size ${size}.` }] };
+        }
+    );
+
+    server.tool(
+        "ui_add_to_cart",
+        "Visually click the 'Add to Bag' button on the product details page. Note: Also requires calling this tool to actually add it to the backend cart.",
+        {
+            userId: z.string().describe("The user ID"),
+            productId: z.string().describe("The unique MongoDB ObjectId of the product"),
+            quantity: z.number().min(1).describe("Number of items to add"),
+            size: z.string().describe("Size variant selected by user")
+        },
+        async ({ userId, productId, quantity, size }) => {
+            try {
+                await addToCartService(userId, productId, quantity, size);
+                const updatedCart = await getCartService(userId);
+                return { content: [{ type: "text", text: `Clicked Add to Bag. Cart updated: ${JSON.stringify(updatedCart, null, 2)}` }] };
+            } catch (error) {
+                return { isError: true, content: [{ type: "text", text: `Failed to add to cart: ${error.message}` }] };
+            }
+        }
+    );
+
+    server.tool(
+        "ui_checkout",
+        "Visually click the 'Proceed to Checkout' button on the Cart page.",
+        {},
+        async () => {
+            return { content: [{ type: "text", text: `Clicked Proceed to Checkout. Navigating to checkout page.` }] };
         }
     );
 

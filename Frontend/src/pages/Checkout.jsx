@@ -244,6 +244,8 @@ export default function Checkout() {
                       checked={selected}
                       onChange={() => setPaymentMethod(option.value)}
                       className="sr-only"
+                      data-agent-action="select-payment"
+                      data-agent-id={option.value}
                     />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -369,6 +371,7 @@ export default function Checkout() {
                 />
                 <button
                   type="button"
+                  data-agent-action="apply-discount"
                   onClick={handleApplyDiscount}
                   disabled={applyingDiscount || !discountCode.trim()}
                   className="bg-stone-200 px-6 py-3 text-xs font-bold uppercase tracking-widest text-stone-900 transition-colors hover:bg-stone-300 disabled:opacity-50"
@@ -416,6 +419,7 @@ export default function Checkout() {
 
             <button
               type="submit"
+              data-agent-action="complete-order"
               onClick={handleSubmit}
               disabled={submitting || items.length === 0}
               className="w-full bg-stone-950 py-6 text-xs font-bold uppercase tracking-[0.3em] text-white transition-all hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
@@ -456,6 +460,7 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
+        data-agent-id={name}
         className="w-full border-0 border-b border-stone-300 bg-white px-0 py-3 text-sm placeholder:text-stone-400 transition-colors focus:border-stone-900 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60 text-stone-950"
       />
     </div>

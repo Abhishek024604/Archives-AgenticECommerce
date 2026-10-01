@@ -1,8 +1,8 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { API } from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { SUBCATEGORIES } from "../utils/categories";
+import { useSubCategories } from "../hooks/useSubCategories";
 
 export default function EditProduct() {
   const { id } = useParams();
@@ -11,6 +11,7 @@ export default function EditProduct() {
   const [product, setProduct] = useState(null);
   const [category, setCategory] = useState("men");
   const [subCategory, setSubCategory] = useState("");
+  const { subCategories: availableSubCategories } = useSubCategories();
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -208,7 +209,7 @@ export default function EditProduct() {
             className="w-full border border-stone-200/30 bg-stone-50 p-3 text-sm text-stone-950 outline-none focus:border-stone-900"
           >
             <option value="">Select Subcategory</option>
-            {SUBCATEGORIES.map((cat) => (
+            {availableSubCategories.map((cat) => (
               <option key={cat} value={cat.toLowerCase()}>{cat}</option>
             ))}
           </select>

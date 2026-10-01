@@ -255,6 +255,7 @@ export default function ProductPage() {
                       key={v.size || i}
                       type="button"
                       onClick={() => setSize(v.size)}
+                      data-agent-size={v.size}
                       className={`py-3 text-xs font-semibold rounded-lg border transition-all ${
                         size === v.size
                           ? "border-stone-950 bg-stone-950 text-white shadow-xs"
@@ -302,6 +303,7 @@ export default function ProductPage() {
                 <button
                   type="button"
                   onClick={onAdd}
+                  data-agent="add-to-cart"
                   className="flex-1 bg-stone-950 text-white py-3.5 px-6 text-xs font-bold uppercase tracking-[0.2em] hover:bg-black transition-colors rounded-lg shadow-sm"
                 >
                   Add to Bag

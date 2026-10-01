@@ -1,4 +1,4 @@
-﻿import Footer from "./components/layout/Footer";
+import Footer from "./components/layout/Footer";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import SignIn from "./pages/SignIn";
@@ -28,11 +28,13 @@ import EditProduct from "./seller/EditProduct";
 import MyProducts from "./seller/MyProducts";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LucasSeller from "./components/LucasSeller";
-import SellerDashboardButton from "./components/SellerDashboardButton";
+import CheckoutAgentWidget from "./components/CheckoutAgentWidget";
+import ScrollToTop from "./components/ScrollToTop";
 
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-white text-stone-950">
+      <ScrollToTop />
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -69,7 +71,7 @@ export default function App() {
         </Routes>
       </div>
       <LucasSeller />
-      <SellerDashboardButton />
+      <CheckoutAgentWidget />
     </div>
   );
 }

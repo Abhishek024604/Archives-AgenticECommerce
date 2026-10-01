@@ -17,6 +17,7 @@ import reviewRoutes from "./routes/reviewRoutes.js"
 import wishlistRoutes from "./routes/wishlistRoutes.js"
 import discountRoutes from "./routes/discountRoutes.js"
 import payoutRoutes from "./routes/payoutRoutes.js"
+import checkoutAgentRoutes from "./routes/checkoutAgentRoutes.js"
 import { attachMcpServer } from "./mcp/index.js"
 
 import cookieParser from "cookie-parser"
@@ -61,6 +62,7 @@ app.use("/api/reviews", reviewRoutes)
 app.use("/api/wishlist", wishlistRoutes)
 app.use("/api/discounts", discountRoutes)
 app.use("/api/payouts", payoutRoutes)
+app.use("/api/checkout-agent", checkoutAgentRoutes)
 
 // Attach MCP Server (SSE & Messages)
 attachMcpServer(app)

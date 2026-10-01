@@ -72,3 +72,12 @@ export const deleteProduct = async (req, res) => {
         res.status(403).json({ message: err.message });
     }
 };
+
+export const getSubCategories = async (req, res) => {
+    try {
+        const subCategories = await productService.getSubCategoriesService();
+        res.status(200).json(subCategories);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};

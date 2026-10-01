@@ -1,9 +1,10 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { API } from "../api/axios";
-import { SUBCATEGORIES } from "../utils/categories";
+import { useSubCategories } from "../hooks/useSubCategories";
 
 export default function AddProduct() {
   const [form, setForm] = useState({ brandName: "", productName: "", category: "men", subCategory: "", price: "", discount: 0 });
+  const { subCategories } = useSubCategories();
   const [images, setImages] = useState([""]);
   const [variants, setVariants] = useState([{ size: "", stock: 10 }]);
 
@@ -41,7 +42,7 @@ export default function AddProduct() {
       </select>
       <select name="subCategory" value={form.subCategory} onChange={update} className="w-full border border-stone-200/30 bg-stone-50 p-3 outline-none focus:border-stone-900">
         <option value="">Select Subcategory</option>
-        {SUBCATEGORIES.map((cat) => (
+        {subCategories.map((cat) => (
           <option key={cat} value={cat.toLowerCase()}>{cat}</option>
         ))}
       </select>

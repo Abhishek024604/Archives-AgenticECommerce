@@ -15,10 +15,13 @@ import HomeFooter from "../components/home/HomeFooter";
 import { fetchProducts } from "../api/productApi";
 import { resolveMediaUrl } from "../utils/media";
 
+let cachedNewArrivals = [];
+let cachedBestSellers = [];
+
 export default function Home() {
   const [wishlist, setWishlist] = useState([]);
-  const [newArrivals, setNewArrivals] = useState([]);
-  const [bestSellers, setBestSellers] = useState([]);
+  const [newArrivals, setNewArrivals] = useState(cachedNewArrivals);
+  const [bestSellers, setBestSellers] = useState(cachedBestSellers);
 
   const toggleWishlist = (id) => {
     setWishlist((prev) =>
@@ -90,12 +93,16 @@ export default function Home() {
 
         const newData = newRes.data?.data || newRes.data;
         if (newData && Array.isArray(newData)) {
-            setNewArrivals(newData.map(formatProduct));
+            const formatted = newData.map(formatProduct);
+            cachedNewArrivals = formatted;
+            setNewArrivals(formatted);
         }
         
         const bestData = bestRes.data?.data || bestRes.data;
         if (bestData && Array.isArray(bestData)) {
-            setBestSellers(bestData.map(formatProduct));
+            const formatted = bestData.map(formatProduct);
+            cachedBestSellers = formatted;
+            setBestSellers(formatted);
         }
       } catch (err) {
         console.error("Failed to load products for home:", err);

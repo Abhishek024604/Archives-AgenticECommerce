@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { useCachedProducts } from "../hooks/useCachedProducts";
 import { fetchProducts } from "../api/productApi";
 import { API } from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
-import { useNavigate } from "react-router-dom";
 import { formatPrice } from "../utils/currency";
 import { resolveMediaUrl } from "../utils/media";
 import AnnouncementBar from "../components/home/AnnouncementBar";
@@ -12,7 +12,7 @@ import HomeNavbar from "../components/home/HomeNavbar";
 import LucasStylistBanner from "../components/home/LucasStylistBanner";
 import ValueBadges from "../components/home/ValueBadges";
 import HomeFooter from "../components/home/HomeFooter";
-import { SUBCATEGORIES } from "../utils/categories";
+import { useSubCategories } from "../hooks/useSubCategories";
 
 const FILTER_CATEGORIES = [
   { label: "Women", id: "women" },
@@ -27,6 +27,7 @@ const FILTER_CATEGORIES = [
 export default function Products() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const initialCategory = searchParams.get("category") || "";
@@ -34,32 +35,72 @@ export default function Products() {
   const initialMinPrice = searchParams.get("minPrice") || "";
   const initialMaxPrice = searchParams.get("maxPrice") || "";
 
-  const [items, setItems] = useState([]);
+  const initialPage = parseInt(searchParams.get("p") || "1", 10);
+  const ITEMS_PER_PAGE = 60;
+
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
   const [subCategories, setSubCategories] = useState(initialSubCategories);
   const [minPrice, setMinPrice] = useState(initialMinPrice);
   const [maxPrice, setMaxPrice] = useState(initialMaxPrice);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(true);
   const [isSubcategoriesOpen, setIsSubcategoriesOpen] = useState(true);
+  const { subCategories: availableSubCategories } = useSubCategories();
+
+  // Copilot-curated products state
+  const [copilotProducts, setCopilotProducts] = useState(location.state?.copilotProducts || null);
+  const [copilotBanner, setCopilotBanner] = useState(!!location.state?.copilotProducts);
 
   const { wishlist, toggleWishlist } = useWishlist();
 
-  const [loading, setLoading] = useState(true);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  // Listen to Copilot product search events across the app
+  useEffect(() => {
+    const handleCopilotEvent = (e) => {
+      if (e.detail?.products && Array.isArray(e.detail.products) && e.detail.products.length > 0) {
+        setCopilotProducts(e.detail.products);
+        setCopilotBanner(true);
+        setTimeout(() => {
+          const gridEl = document.getElementById("product-catalogue-grid") || document.querySelector("h1");
+          if (gridEl) gridEl.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
+      }
+    };
+    window.addEventListener('copilot-products-found', handleCopilotEvent);
+    return () => window.removeEventListener('copilot-products-found', handleCopilotEvent);
+  }, []);
+
+  useEffect(() => {
+    if (location.state?.copilotProducts) {
+      setCopilotProducts(location.state.copilotProducts);
+      setCopilotBanner(true);
+    }
+  }, [location.state]);
+
+  const apiParams = useMemo(() => {
+    const p = {};
+    if (debouncedQuery) p.q = debouncedQuery;
+    if (category) p.category = category;
+    if (subCategories.length > 0) p.subCategory = subCategories.join(",");
+    return p;
+  }, [debouncedQuery, category, subCategories]);
+
+  const { data: items, loading, hasLoaded } = useCachedProducts(apiParams, user);
 
   useEffect(() => {
     const nextQuery = searchParams.get("q") || "";
     const nextCategory = searchParams.get("category") || "";
     const nextSubCategory = searchParams.get("subCategory") || "";
+    const nextPage = parseInt(searchParams.get("p") || "1", 10);
     setQuery(nextQuery);
     setDebouncedQuery(nextQuery);
     setCategory(nextCategory);
     setSubCategories(nextSubCategory ? nextSubCategory.split(",") : []);
     setMinPrice(searchParams.get("minPrice") || "");
     setMaxPrice(searchParams.get("maxPrice") || "");
+    setCurrentPage(nextPage);
   }, [searchParams]);
 
   useEffect(() => {
@@ -80,42 +121,14 @@ export default function Products() {
     if (subCategories.length > 0) params.subCategory = subCategories.join(",");
     if (minPrice) params.minPrice = minPrice;
     if (maxPrice) params.maxPrice = maxPrice;
+    if (currentPage > 1) params.p = currentPage.toString();
 
     setSearchParams(params, { replace: true });
-  }, [debouncedQuery, category, subCategories, maxPrice, minPrice, setSearchParams]);
+  }, [debouncedQuery, category, subCategories, maxPrice, minPrice, currentPage, setSearchParams]);
 
-  useEffect(() => {
-    let active = true;
 
-    (async () => {
-      try {
-        setLoading(true);
-        const apiParams = {};
-        if (debouncedQuery) apiParams.q = debouncedQuery;
-        if (category) apiParams.category = category;
-        if (subCategories.length > 0) apiParams.subCategory = subCategories.join(",");
 
-        const res = await fetchProducts(Object.keys(apiParams).length ? apiParams : undefined);
 
-        if (active) {
-          setItems(res.data || []);
-        }
-      } catch {
-        if (active) {
-          // ignore error
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-          setHasLoaded(true);
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [debouncedQuery, category, subCategories, user]);
 
   /* useEffect for suggestions removed since suggestions aren't used here */
 
@@ -134,18 +147,27 @@ export default function Products() {
     setSubCategories([]);
     setQuery("");
     setDebouncedQuery("");
+    setCopilotProducts(null);
+    setCopilotBanner(false);
   };
 
   const sortedAndFilteredItems = useMemo(() => {
     const minimum = minPrice === "" ? 0 : Number(minPrice);
     const maximum = maxPrice === "" ? Number.POSITIVE_INFINITY : Number(maxPrice);
 
-    let list = items.filter((item) => {
+    const baseList = (copilotProducts && copilotProducts.length > 0) ? copilotProducts : items;
+
+    let list = baseList.filter((item) => {
       const price = Number(item.price) || 0;
       const matchesCategory =
         !category || String(item.category || "").toLowerCase() === category.toLowerCase();
+      const itemSub = String(item.subCategory || "").toLowerCase().trim();
       const matchesSubCategory =
-        subCategories.length === 0 || subCategories.includes(String(item.subCategory || "").toLowerCase());
+        subCategories.length === 0 ||
+        subCategories.some(sc => {
+          const s = sc.toLowerCase().trim();
+          return itemSub === s || itemSub.includes(s) || s.includes(itemSub);
+        });
       return price >= minimum && price <= maximum && matchesCategory && matchesSubCategory;
     });
 
@@ -155,10 +177,34 @@ export default function Products() {
       list = list.sort((a, b) => (b.price || 0) - (a.price || 0));
     } else if (sortBy === "rating") {
       list = list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === "newest") {
+      if (!category) {
+        const catOrder = { "men": 1, "women": 2 };
+        const getOrder = (cat) => catOrder[String(cat || "").toLowerCase()] || 3;
+        list = list.sort((a, b) => {
+          const orderDiff = getOrder(a.category) - getOrder(b.category);
+          if (orderDiff !== 0) return orderDiff;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        });
+      }
     }
 
     return list;
-  }, [items, category, subCategories, maxPrice, minPrice, sortBy]);
+  }, [items, copilotProducts, category, subCategories, maxPrice, minPrice, sortBy]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedAndFilteredItems.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedAndFilteredItems, currentPage]);
+
+  const totalPages = Math.ceil(sortedAndFilteredItems.length / ITEMS_PER_PAGE);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo(0, 0);
+    }
+  };
 
   // min/max placeholder calculation removed since it is no longer used
 
@@ -291,7 +337,7 @@ export default function Products() {
                 </button>
                 {isSubcategoriesOpen && (
                   <div className="space-y-2 text-xs max-h-[216px] overflow-y-auto pr-2 custom-scrollbar">
-                    {SUBCATEGORIES.map((subItem) => {
+                    {availableSubCategories.map((subItem) => {
                       const lower = subItem.toLowerCase();
                       const isSelected = subCategories.includes(lower);
                       return (
@@ -390,8 +436,43 @@ export default function Products() {
           )}
 
           {/* Product Grid Area */}
-          <div className="flex-1 min-w-0 w-full">
+          <div className="flex-1 min-w-0 w-full" id="product-catalogue-grid">
             
+            {/* Copilot Active Filter Banner */}
+            {copilotBanner && copilotProducts && copilotProducts.length > 0 && (
+              <div className="mb-6 p-4 rounded-xl bg-stone-900 border border-amber-400/50 text-stone-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-400 flex-shrink-0">
+                    <span className="material-symbols-outlined text-2xl">smart_toy</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono uppercase tracking-wider text-amber-400 font-semibold">
+                        Copilot Curated Selection
+                      </span>
+                      <span className="text-[11px] font-mono text-stone-400">
+                        ({sortedAndFilteredItems.length} matching items)
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-300 mt-0.5">
+                      Displaying products recommended by your Autonomous Shopping Copilot.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCopilotProducts(null);
+                    setCopilotBanner(false);
+                    clearAllFilters();
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-mono transition-colors border border-stone-700 hover:border-amber-400/40 flex-shrink-0 self-start sm:self-auto"
+                >
+                  Show Full Catalogue
+                </button>
+              </div>
+            )}
+
             {loading && !hasLoaded ? (
               <div className="py-20 text-center text-sm font-medium text-stone-500">
                 Loading luxury collection...
@@ -420,7 +501,7 @@ export default function Products() {
                     : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
                 }`}
               >
-                {sortedAndFilteredItems.map((p, idx) => {
+                {paginatedItems.map((p, idx) => {
                   const isWishlisted = wishlist.some(w => w._id === (p._id || p.id));
                   const hasDiscount = p.discount && p.discount > 0;
                   const originalPrice = hasDiscount
@@ -430,6 +511,7 @@ export default function Products() {
                   return (
                     <div
                       key={p._id || p.id || idx}
+                      data-agent-product={p._id || p.id}
                       className="group relative flex flex-col rounded-md overflow-hidden bg-white border border-stone-100 transition-all hover:shadow-md"
                     >
                       {/* Product Image Container */}
@@ -514,6 +596,29 @@ export default function Products() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && !loading && (
+              <div className="mt-12 mb-4 flex items-center justify-center gap-4">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-xs font-bold uppercase tracking-wider border border-stone-200 text-stone-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stone-50"
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-semibold text-stone-900">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 text-xs font-bold uppercase tracking-wider border border-stone-200 text-stone-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stone-50"
+                >
+                  Next
+                </button>
               </div>
             )}
 

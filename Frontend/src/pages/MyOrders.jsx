@@ -6,9 +6,11 @@ import { resolveMediaUrl } from "../utils/media";
 import HomeNavbar from "../components/home/HomeNavbar";
 import HomeFooter from "../components/home/HomeFooter";
 
+let cachedOrders = [];
+
 export default function MyOrders() {
   const location = useLocation();
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(cachedOrders);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -17,7 +19,8 @@ export default function MyOrders() {
       try {
         setLoading(true);
         const res = await getMyOrders();
-        setOrders(res.data || []);
+        cachedOrders = res.data || [];
+        setOrders(cachedOrders);
       } catch (err) {
         setError(err?.response?.data?.message || "Failed to load order history.");
       } finally {

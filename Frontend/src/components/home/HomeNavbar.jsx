@@ -5,7 +5,7 @@ import { useWishlist } from "../../context/WishlistContext";
 import { fetchProductSuggestions } from "../../api/productApi";
 import { formatPrice } from "../../utils/currency";
 import { resolveMediaUrl } from "../../utils/media";
-import { SUBCATEGORIES } from "../../utils/categories";
+import { useSubCategories } from "../../hooks/useSubCategories";
 
 const CATEGORY_NAV_LINKS = [
   { label: "Women", to: "/products?category=women", key: "women" },
@@ -38,6 +38,7 @@ export default function HomeNavbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const menuRef = useRef(null);
   const searchContainerRef = useRef(null);
+  const { subCategories } = useSubCategories();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -83,7 +84,7 @@ export default function HomeNavbar() {
       }
     });
 
-    SUBCATEGORIES.forEach(sub => {
+    subCategories.forEach(sub => {
       if (sub.toLowerCase().includes(queryLower)) {
         terms.add(sub);
       }
@@ -107,7 +108,7 @@ export default function HomeNavbar() {
     }
 
     return Array.from(terms).slice(0, 5);
-  }, [debouncedSearchQuery, suggestions]);
+  }, [debouncedSearchQuery, suggestions, subCategories]);
 
   useEffect(() => {
     const handleClickOutsideSearch = (event) => {
@@ -213,6 +214,7 @@ export default function HomeNavbar() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search products..."
                     autoFocus
+                    data-agent="search-box"
                     className="w-48 sm:w-64 border-b border-stone-800 bg-stone-50 px-2 py-1 text-xs outline-none text-stone-900"
                   />
                   <button
@@ -297,6 +299,7 @@ export default function HomeNavbar() {
                 onClick={() => setIsSearchOpen(true)}
                 className="flex items-center text-stone-800 transition-colors hover:text-black"
                 aria-label="Search"
+                data-agent="search-toggle"
               >
                 <span className="material-symbols-outlined text-xl">search</span>
               </button>
